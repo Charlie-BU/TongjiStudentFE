@@ -5,8 +5,7 @@
   background: var(--ant-color-bg-layout);
 }
 
-.chat-header,
-.chat-main {
+.chat-header {
   width: min(920px, calc(100% - 32px));
   margin: 0 auto;
 }
@@ -31,8 +30,10 @@
 }
 
 .chat-main {
+  width: min(920px, 100%);
+  margin: 0 auto;
   flex: 1;
-  padding: 20px 0 144px;
+  padding: 20px 16px 144px;
 }
 
 .welcome-panel {
@@ -80,7 +81,7 @@
   padding: 10px 16px;
   color: var(--ant-color-text);
   background: var(--ant-color-fill-tertiary);
-  border-radius: 999px;
+  border-radius: 22px;
 }
 
 .user-message .ant-typography {
@@ -95,16 +96,18 @@
 }
 
 .assistant-message {
-  justify-self: start;
+  width: 100%;
+  max-width: none;
+  padding: 0;
   color: var(--ant-color-text);
-  background: var(--ant-color-bg-container);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-bottom-left-radius: 5px;
-  box-shadow: var(--ant-box-shadow-tertiary);
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .answer-text.ant-typography {
   margin: 0;
+  font-size: inherit;
+  line-height: inherit;
   white-space: pre-wrap;
 }
 
@@ -168,8 +171,7 @@
 }
 
 @media (max-width: 640px) {
-  .chat-header,
-  .chat-main {
+  .chat-header {
     width: min(100% - 24px, 920px);
   }
 
@@ -182,6 +184,7 @@
   }
 
   .chat-main {
+    width: 100%;
     padding-top: 8px;
   }
 
