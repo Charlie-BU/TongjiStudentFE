@@ -1,0 +1,137 @@
+.chat-input-panel {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: min(640px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 14px 0 22px;
+  background: linear-gradient(to bottom, transparent, var(--ant-color-bg-layout) 28%);
+}
+
+.chat-input-card {
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 20px;
+  background: var(--ant-color-bg-container);
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.chat-input-card .ant-card-body {
+  padding: 14px 16px;
+}
+
+.chat-input-textarea,
+.chat-input-textarea:focus,
+.chat-input-textarea:focus-visible,
+.chat-input-textarea:focus-within,
+.chat-input-textarea textarea:focus,
+.chat-input-textarea textarea:focus-visible {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.chat-input-textarea textarea {
+  display: block;
+  min-height: 64px !important;
+  padding: 0 !important;
+  caret-color: var(--ant-color-text);
+  color: var(--ant-color-text);
+  font-size: 16px;
+  line-height: 24px;
+  resize: none;
+}
+
+.chat-input-textarea textarea::placeholder {
+  color: var(--ant-color-text-placeholder);
+}
+
+.chat-input-toolbar,
+.chat-input-tools {
+  display: flex;
+  align-items: center;
+}
+
+.chat-input-toolbar {
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+.chat-input-tools {
+  gap: 8px;
+}
+
+.chat-input-tool-button.ant-btn {
+  width: 36px;
+  height: 36px;
+  border-color: var(--ant-color-border-secondary);
+  color: var(--ant-color-text-secondary);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.chat-input-tool-button.ant-btn.ant-btn-variant-outlined.ant-btn-color-default:not(:disabled):not(.ant-btn-disabled):hover {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill-secondary);
+  border-color: var(--ant-color-border-secondary);
+}
+
+.chat-input-tool-button.ant-btn.ant-btn-variant-outlined.ant-btn-color-default:not(:disabled):not(.ant-btn-disabled):active {
+  color: var(--ant-color-text-secondary);
+  background: var(--ant-color-fill);
+  border-color: var(--ant-color-border-secondary);
+}
+
+.chat-input-send-button.ant-btn {
+  width: 36px;
+  height: 36px;
+  color: var(--ant-color-text-light-solid);
+  background: var(--ant-color-text);
+  border-color: var(--ant-color-text);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.chat-input-send-button.ant-btn:not(:disabled):hover {
+  background: var(--ant-color-text);
+  border-color: var(--ant-color-text);
+}
+
+.chat-input-send-button.ant-btn:disabled,
+.chat-input-send-button.ant-btn.ant-btn-disabled {
+  color: var(--ant-color-text-disabled);
+  background: var(--ant-color-bg-container-disabled);
+  border-color: var(--ant-color-border-disabled);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.chat-input-stop-button.ant-btn {
+  width: 36px;
+  height: 36px;
+  color: var(--ant-color-text-light-solid);
+  background: var(--ant-color-text);
+  border-color: var(--ant-color-text);
+  font-size: 16px;
+}
+
+.chat-input-stop-button.ant-btn.ant-btn-variant-solid.ant-btn-color-default:not(:disabled):not(.ant-btn-disabled):hover {
+  background: var(--ant-color-text);
+  border-color: var(--ant-color-text);
+}
+
+.chat-input-stop-icon {
+  display: block;
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--ant-color-text-light-solid);
+}
+
+@media (max-width: 640px) {
+  .chat-input-panel {
+    width: min(100% - 24px, 640px);
+  }
+}

@@ -1,0 +1,189 @@
+.chat-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--ant-color-bg-layout);
+}
+
+.chat-header,
+.chat-main {
+  width: min(920px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 84px;
+}
+
+.chat-header .ant-typography {
+  margin: 0;
+}
+
+.brand-kicker {
+  color: var(--ant-color-primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chat-main {
+  flex: 1;
+  padding: 20px 0 144px;
+}
+
+.welcome-panel {
+  max-width: 620px;
+  margin: 72px auto 0;
+  text-align: center;
+}
+
+.welcome-panel h1.ant-typography {
+  margin: 16px 0 8px;
+}
+
+.suggestion-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.suggestion-list .ant-btn {
+  height: auto;
+  padding: 15px 18px;
+  text-align: left;
+}
+
+.conversation-list {
+  display: grid;
+  gap: 32px;
+}
+
+.chat-turn {
+  display: grid;
+  gap: 14px;
+}
+
+.message {
+  width: fit-content;
+  max-width: min(720px, 90%);
+  padding: 13px 16px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+}
+
+.user-message {
+  justify-self: end;
+  color: var(--ant-color-text-light-solid);
+  background: var(--ant-color-primary);
+  border-bottom-right-radius: 5px;
+}
+
+.user-message .ant-typography {
+  color: inherit;
+}
+
+.assistant-section {
+  display: grid;
+  gap: 6px;
+}
+
+.assistant-message {
+  justify-self: start;
+  color: var(--ant-color-text);
+  background: var(--ant-color-bg-container);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-bottom-left-radius: 5px;
+  box-shadow: var(--ant-box-shadow-tertiary);
+}
+
+.answer-text.ant-typography {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.activity-collapse {
+  max-width: 720px;
+}
+
+.activity-collapse .ant-collapse-header {
+  padding: 8px 4px !important;
+  color: var(--ant-color-text-secondary) !important;
+  font-size: 13px;
+}
+
+.activity-collapse .ant-collapse-content-box {
+  padding: 4px 0 10px !important;
+}
+
+.activity-content {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+  background: var(--ant-color-fill-alter);
+}
+
+.reasoning-block {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ant-color-split);
+}
+
+.reasoning-block .ant-typography-paragraph {
+  margin: 4px 0 0;
+}
+
+.activity-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.activity-row > div {
+  display: grid;
+  gap: 2px;
+}
+
+.activity-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+}
+
+.activity-dot.running {
+  background: var(--ant-color-primary);
+  box-shadow: 0 0 0 4px var(--ant-color-primary-bg);
+}
+
+.activity-dot.completed {
+  background: var(--ant-color-success);
+}
+
+@media (max-width: 640px) {
+  .chat-header,
+  .chat-main {
+    width: min(100% - 24px, 920px);
+  }
+
+  .chat-header {
+    min-height: 72px;
+  }
+
+  .chat-header h3.ant-typography {
+    font-size: 20px;
+  }
+
+  .chat-main {
+    padding-top: 8px;
+  }
+
+  .welcome-panel {
+    margin-top: 48px;
+  }
+
+}
