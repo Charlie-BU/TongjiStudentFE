@@ -1,3 +1,51 @@
+## CHANGELOG - 2026-08-10 01:27 - 简化聊天首屏并同步输入链路测试
+
+### 撰写时间
+
+- 2026-08-10 01:27
+
+### Base Commit
+
+- b72e03a55516f72a177df298a1aa6c29127f0469
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+这次调整的重点是收紧聊天首页的入口。原页面同时维护品牌头部、欢迎文案和建议问题，但实际发起对话仍要落到输入框；因此我们改为直接展示空会话与输入区，把首屏交互收敛为“输入问题并发送”。
+
+一开始，现有测试仍从已移除的建议问题按钮启动对话，导致 `pnpm test` 无法通过。最终没有回退新的页面结构，而是把测试、规范和实现统一到文本输入这条真实入口上。
+
+### 改动概览
+
+- `ChatArea` 移除品牌头部、欢迎面板与建议问题，空会话只保留消息列表和 `ChatInput`。
+- 用户消息改用中性填充色和胶囊圆角；禁用发送按钮使用透明边框，保持输入区视觉一致。
+- `ConfigProvider.theme.cssVar` 使用 `tongji-student-theme` 作为 CSS 变量命名 key，并将同名 class 挂在聊天根节点，避免主题变量与其他页面实例混用。
+- `test/components/app.test.tsx` 与 `test/components/chat-area.test.tsx` 改为通过文本框输入、点击发送来覆盖流式展示和中止行为；`docs/UTSpec.md` 同步更新首屏测试契约。
+- 清理已删除页面元素遗留的 `Title` 导入，恢复类型检查、lint 与生产构建。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`App` 仍通过 `ConfigProvider` 向 `ChatArea` 和 `ChatInput` 提供 Ant Design token；`ChatInput` 的受控 `value` 与 `onSubmit` 是创建会话的唯一入口。
+- 当前改动：用户填写文本后，`ChatArea.submitQuestion` 创建轮次并消费 `streamMockReply` 的事件；`ChatArea` 不再从 `suggestedQuestions` 调用同一函数。主题 key 由 `App` 传入，根节点 class 让业务 CSS 可定位到该主题实例。
+- 下游影响：`ChatArea` 的用户可见首屏结构已改变，因此测试改为模拟真实输入和发送按钮。后续接入真实流式服务时，仍需保持 `ChatInput -> submitQuestion -> StreamEvent` 的数据流和停止语义。
+
+### 改动结果与业务影响
+
+当前首屏更聚焦，用户进入页面后可直接输入问题；消息、流式活动与中止行为未改变。测试不再依赖已删除的建议按钮，`pnpm check` 已验证 8 个用例、测试类型检查、lint 与生产构建均通过。
+
+### 风险与待办
+
+- 移除建议问题后，首屏缺少可发现性引导；如需帮助首次使用者，应以产品确认的引导文案或示例补回，而不是让测试继续依赖不存在的入口。
+- 本次只验证离线 Mock 流。真实 SSE 的错误呈现、鉴权和网络中断仍需在服务适配层落地后补测。
+- Vite 构建仍提示主 JavaScript 包超过 500 kB；这不是本次改动造成的阻塞项，但后续可评估按路由或功能拆包。
+
+### 建议 Commit Message（git-cz）
+
+- `refactor(chat): simplify initial input experience`
+
 ## CHANGELOG - 2026-08-10 01:07 - 建立 Mock 流式校园问答与前端测试基线
 
 ### 撰写时间
@@ -45,4 +93,3 @@
 ### 建议 Commit Message（git-cz）
 
 - `feat(chat): add mock streaming campus assistant`
-

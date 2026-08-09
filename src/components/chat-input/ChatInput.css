@@ -103,7 +103,7 @@
 .chat-input-send-button.ant-btn.ant-btn-disabled {
   color: var(--ant-color-text-disabled);
   background: var(--ant-color-bg-container-disabled);
-  border-color: var(--ant-color-border-disabled);
+  border-color: transparent;
   cursor: not-allowed;
   opacity: 1;
 }

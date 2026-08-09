@@ -20,7 +20,7 @@ describe("ChatArea", () => {
     streamMockReply.mockReset();
   });
 
-  it("应展示欢迎建议，并将 Agent 工作过程和最终回答分开呈现", async () => {
+  it("应从文本输入创建问题，并将 Agent 工作过程和最终回答分开呈现", async () => {
     const user = userEvent.setup();
     streamMockReply.mockImplementation(async function* () {
       yield { type: "reasoning", text: "先检索新生指南" };
@@ -31,7 +31,8 @@ describe("ChatArea", () => {
 
     render(<ChatArea />);
 
-    await user.click(screen.getByRole("button", { name: "新生报到需要准备哪些材料？" }));
+    await user.type(screen.getByLabelText("输入校园问题"), "新生报到需要准备哪些材料？");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
 
     expect(await screen.findByText("请携带录取通知书。")).toBeInTheDocument();
     expect(screen.getByText("新生报到需要准备哪些材料？")).toBeInTheDocument();
@@ -54,7 +55,8 @@ describe("ChatArea", () => {
 
     render(<ChatArea />);
 
-    await user.click(screen.getByRole("button", { name: "校园卡应该在哪里办理？" }));
+    await user.type(screen.getByLabelText("输入校园问题"), "校园卡应该在哪里办理？");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
     await user.click(await screen.findByRole("button", { name: "停止生成" }));
 
     expect(await screen.findByText("本轮回答已停止。")).toBeInTheDocument();

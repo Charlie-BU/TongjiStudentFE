@@ -77,13 +77,16 @@
 
 .user-message {
   justify-self: end;
-  color: var(--ant-color-text-light-solid);
-  background: var(--ant-color-primary);
-  border-bottom-right-radius: 5px;
+  padding: 10px 16px;
+  color: var(--ant-color-text);
+  background: var(--ant-color-fill-tertiary);
+  border-radius: 999px;
 }
 
 .user-message .ant-typography {
   color: inherit;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .assistant-section {

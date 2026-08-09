@@ -6,7 +6,7 @@ function App() {
   return (
     <ConfigProvider
       theme={{
-        cssVar: {},
+        cssVar: { key: "tongji-student-theme" },
         token: {
           colorBgLayout: "#fcfcfc",
           colorPrimary: "#1d6cff",
