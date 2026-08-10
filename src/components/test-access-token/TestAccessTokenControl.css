@@ -1,0 +1,13 @@
+.test-access-token-trigger.ant-btn {
+  position: fixed;
+  z-index: 5;
+  right: 24px;
+  bottom: 24px;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 4px 14px rgb(29 108 255 / 35%);
+}
+
+.test-access-token-trigger.ant-btn:active {
+  cursor: grabbing;
+}

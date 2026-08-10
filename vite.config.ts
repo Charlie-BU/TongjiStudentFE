@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   const devServerPort = Number(env.VITE_DEV_SERVER_PORT || 5173)
 
   return {
+    envPrefix: ['VITE_', 'TEST_'],
     plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
     server: {
       // 固定使用 .env 中声明的开发端口，避免 Vite 自动漂移到其他端口。

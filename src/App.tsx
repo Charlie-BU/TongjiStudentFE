@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties, type PointerEvent
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button, ConfigProvider } from "antd";
 import { SessionSidebar } from "./components/session-sidebar/SessionSidebar";
+import { TestAccessTokenControl } from "./components/test-access-token/TestAccessTokenControl";
 import { ChatArea } from "./components/chat-area/ChatArea";
 import { type CreatedSession, useChat } from "./hooks/use-chat";
 import { useSessionRoute } from "./hooks/use-session-route";
@@ -141,6 +142,7 @@ function App() {
         />
         <ChatArea chat={chat} />
       </div>
+      {import.meta.env.TEST_ENV === "true" ? <TestAccessTokenControl /> : null}
     </ConfigProvider>
   );
 }

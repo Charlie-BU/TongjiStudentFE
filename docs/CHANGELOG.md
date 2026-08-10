@@ -1,3 +1,51 @@
+## CHANGELOG - 2026-08-11 00:32 - 添加测试 Token 配置入口与请求鉴权注入
+
+### 撰写时间
+
+- 2026-08-11 00:32
+
+### Base Commit
+
+- 8a736cd60965742e4a7a6a057e621a63f2f452bf
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+会话侧栏已经能够读取持久会话接口，但本地联调时缺少一个可控的 Bearer token 输入边界。为了不把测试凭据写进代码或请求 fixture，本次把输入入口限定为 `TEST_ENV=true` 的测试构建，并让服务层在每次请求前从浏览器本地存储读取最新值。
+
+按钮一开始固定在右下角。考虑到调试页面本身有输入区和移动端侧栏，入口也支持拖拽并在拖动后抑制 click，避免调整位置时误打开 Modal。
+
+### 改动概览
+
+- `vite.config.ts` 将 `TEST_` 前缀加入客户端环境变量白名单，`App` 仅在 `import.meta.env.TEST_ENV === "true"` 时装配 `TestAccessTokenControl`。
+- 新增独立的 `TestAccessTokenControl`：圆形入口提供 Token 输入 Modal，保存时写入 `localStorage["tongji-access-token"]`，并支持限制在视口内的 Pointer Events 拖拽。
+- `tongjiStudentService` 在请求构造阶段读取该本地值，并在保留调用方 headers 的同时附加 `Authorization: Bearer <token>`。
+- 新增页面交互与服务层单测，覆盖 Token 保存、按钮拖拽不触发 Modal，以及 Bearer 请求头构造。
+- `index.html` 同步将浏览器页面标题调整为“同济同学”，并移除未被页面引用的 `public/icons.svg`。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`.env` 中的 `TEST_ENV` 决定 `App` 是否渲染调试入口；用户通过独立按钮输入虚构或联调 Token。
+- 当前改动：组件将值保存到 `localStorage`，请求适配器在 `axios.request` 前读取同一键并合并 headers，因此保存后不需要重建 `tongjiStudentService` 或刷新页面。
+- 下游影响：CAM 生成客户端和 `useChat` 的调用签名不变；会话列表、历史恢复和 SSE 请求都会经过同一服务适配器取得 Authorization 头。
+
+### 改动结果与业务影响
+
+在测试构建中，开发者可以手动配置和更新同济 Access Token，后续 API 请求会立即携带该 Token。`pnpm check` 已验证 6 个测试文件、20 个用例、测试类型检查、ESLint 与生产构建；`antd lint src` 和 `git diff --check` 也通过。
+
+### 风险与待办
+
+- 当前通过 `envPrefix: ['VITE_', 'TEST_']` 暴露变量。它比需求所需的单个 `TEST_ENV` 更宽，未来若 `.env` 增加 `TEST_*` 敏感值，可能被编译进客户端；应改为只显式注入布尔开关。
+- Token 按需求存入 `localStorage`，因此仅应使用短期、测试用途的凭据；不要在共享浏览器配置高权限生产 Token。
+- Vite 仍提示主 JavaScript 包超过 500 kB。本次没有改变现有拆包策略。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(auth): add test token configuration`
+
 ## CHANGELOG - 2026-08-11 00:18 - 增加会话侧栏与历史恢复，并修复新建聊天竞态
 
 ### 撰写时间

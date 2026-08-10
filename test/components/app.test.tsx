@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +25,7 @@ describe("App", () => {
   });
 
   afterEach(() => {
+    window.localStorage.clear();
     window.history.replaceState(null, "", "/");
   });
 
@@ -33,6 +34,41 @@ describe("App", () => {
 
     expect(screen.getByLabelText("输入校园问题")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "发送问题" })).toBeDisabled();
+  });
+
+  it("应在测试环境保存手动输入的 Tongji Access Token", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole("button", { name: "配置测试 Tongji Access Token" }));
+    await user.type(screen.getByLabelText("输入 Tongji Access Token"), "test-access-token");
+    await user.click(screen.getByRole("button", { name: /保\s*存/ }));
+
+    expect(window.localStorage.getItem("tongji-access-token")).toBe("test-access-token");
+  });
+
+  it("应支持拖拽测试 Token 按钮且不触发弹窗", () => {
+    render(<App />);
+    const trigger = screen.getByRole("button", { name: "配置测试 Tongji Access Token" });
+    vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
+      bottom: 740,
+      height: 40,
+      left: 900,
+      right: 940,
+      toJSON: () => ({}),
+      top: 700,
+      width: 40,
+      x: 900,
+      y: 700,
+    });
+
+    fireEvent.pointerDown(trigger, { clientX: 910, clientY: 710, pointerId: 1 });
+    fireEvent.pointerMove(trigger, { clientX: 110, clientY: 120, movementX: -800, movementY: -590, pointerId: 1 });
+    fireEvent.pointerUp(trigger, { pointerId: 1 });
+    fireEvent.click(trigger);
+
+    expect(trigger).toHaveStyle({ left: "100px", top: "110px" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("应根据 session 路由恢复当前会话快照", async () => {
