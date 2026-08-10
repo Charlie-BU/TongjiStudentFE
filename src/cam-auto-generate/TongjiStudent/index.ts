@@ -8,17 +8,21 @@ import type {
   Ping200Response,
   TongjiOauthTokenBodyRequest,
   TongjiOauthToken200Response,
+  SessionBodyRequest,
   SessionHeaderRequest,
   Session200Response,
   SessionMessagesBodyRequest,
   SessionMessagesPathRequest,
   SessionMessagesHeaderRequest,
   SessionMessages200Response,
-  SessionMessagesQueryRequest,
   TaskPlanPathRequest,
   TaskPlanHeaderRequest,
   TaskPlan200Response,
   TaskPlan404Response,
+  SessionRenameBodyRequest,
+  SessionRenameHeaderRequest,
+  SessionRename200Response,
+  SessionMessagesQueryRequest,
 } from './namespaces';
 
 export default class TongjiStudentService<T> {
@@ -93,13 +97,13 @@ export default class TongjiStudentService<T> {
 
   /** 创建一个新会话；可创建匿名临时会话，也可在携带有效校园 Bearer token 时创建认证持久会话 */
   SessionPOST(
-    req: SessionHeaderRequest,
+    req: SessionBodyRequest & SessionHeaderRequest,
     options?: T,
   ): Promise<Session200Response> {
     const _req = req || {};
     let url = this.genBaseURL('/v1/sessions');
     const method = 'POST';
-    const data = undefined;
+    const data = { name: _req['name'] };
     const params = undefined;
     const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
@@ -124,27 +128,6 @@ export default class TongjiStudentService<T> {
     return this.request({ url, method, data, params, headers }, options);
   }
 
-  /** 读取指定会话最近历史消息，结果按时间和消息序号从旧到新排列 */
-  SessionMessagesGET(
-    req: SessionMessagesQueryRequest &
-      SessionMessagesPathRequest &
-      SessionMessagesHeaderRequest,
-    options?: T,
-  ): Promise<SessionMessages200Response> {
-    const _req = req || {};
-    let url = this.genBaseURL(
-      '/v1/sessions/{session_id}/messages-copy-1786359424',
-    );
-    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
-      url = url.replace('{session_id}', String(_req['session_id']));
-    }
-    const method = 'GET';
-    const data = undefined;
-    const params = { limit: _req['limit'] };
-    const headers = { Authorization: _req['Authorization'] };
-    return this.request({ url, method, data, params, headers }, options);
-  }
-
   /** 读取指定会话当前活动任务计划；认证会话按当前 `user_id` 校验归属，匿名会话按 `session_id` capability 校验。当前不存在活动计划时返回 `{"plan":null}` */
   TaskPlanGET(
     req: TaskPlanPathRequest & TaskPlanHeaderRequest,
@@ -158,6 +141,53 @@ export default class TongjiStudentService<T> {
     const method = 'GET';
     const data = undefined;
     const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 根据有效 Bearer access token 返回当前用户的全部持久会话，按最近活跃时间倒序排列。匿名会话不在此列表中 */
+  SessionGET(
+    req: SessionHeaderRequest,
+    options?: T,
+  ): Promise<Session200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions');
+    const method = 'GET';
+    const data = undefined;
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 修改当前用户拥有的持久会话名称 */
+  SessionRenamePOST(
+    req: SessionRenameBodyRequest & SessionRenameHeaderRequest,
+    options?: T,
+  ): Promise<SessionRename200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/session/rename');
+    const method = 'POST';
+    const data = { session_id: _req['session_id'], name: _req['name'] };
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 读取指定会话最近历史消息，结果按时间和消息序号从旧到新排列 */
+  SessionMessagesGET(
+    req: SessionMessagesQueryRequest &
+      SessionMessagesPathRequest &
+      SessionMessagesHeaderRequest,
+    options?: T,
+  ): Promise<SessionMessages200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions/{session_id}/messages');
+    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
+      url = url.replace('{session_id}', String(_req['session_id']));
+    }
+    const method = 'GET';
+    const data = undefined;
+    const params = { limit: _req['limit'] };
     const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
   }

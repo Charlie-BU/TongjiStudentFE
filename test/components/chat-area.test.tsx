@@ -10,10 +10,15 @@ const tongjiStudentService = vi.hoisted(() => ({
 vi.mock("../../src/services/tongji-student", () => ({ tongjiStudentService }));
 
 import { ChatArea } from "../../src/components/chat-area/ChatArea";
+import { useChat } from "../../src/hooks/use-chat";
 
 // abortError 创建可被 ChatArea 识别的用户取消错误。
 function abortError(): DOMException {
   return new DOMException("已停止生成", "AbortError");
+}
+
+function ChatAreaHarness() {
+  return <ChatArea chat={useChat()} />;
 }
 
 describe("ChatArea", () => {
@@ -32,7 +37,7 @@ describe("ChatArea", () => {
       { type: "completed" },
     ]);
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "新生报到需要准备哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -53,7 +58,7 @@ describe("ChatArea", () => {
       { type: "completed" },
     ]);
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "需要哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -76,7 +81,7 @@ describe("ChatArea", () => {
       { type: "completed" },
     ]);
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
     vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
 
     await user.type(screen.getByLabelText("输入校园问题"), "你好");
@@ -105,7 +110,7 @@ describe("ChatArea", () => {
       },
     );
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "校园卡应该在哪里办理？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -119,7 +124,7 @@ describe("ChatArea", () => {
     const user = userEvent.setup();
     mockSseEvents([{ type: "failed" }]);
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "查询校园卡");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -147,7 +152,7 @@ describe("ChatArea", () => {
       },
     );
 
-    render(<ChatArea />);
+    render(<ChatAreaHarness />);
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("输入校园问题"), {

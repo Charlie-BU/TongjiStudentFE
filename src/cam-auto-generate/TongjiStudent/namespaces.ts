@@ -35,6 +35,11 @@ export interface SessionHeaderRequest {
   Authorization?: string;
 }
 
+export interface SessionBodyRequest {
+  /** session 名 */
+  name?: string;
+}
+
 export interface Session200Response {
   /** 会话 ID；匿名会话通常为 `anon_` 前缀 */
   session_id: string;
@@ -70,6 +75,92 @@ export interface SessionMessages200Response {
   occurred_at: string;
   /** 业务 data */
   data: any;
+}
+
+export interface TaskPlanPathRequest {
+  /** 目标会话 ID */
+  session_id: string;
+}
+
+export interface TaskPlanHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface TaskPlan200ResponsePlanItemTasksItem {
+  /** 任务唯一 ID */
+  id: string;
+  /** 任务描述 */
+  desc: string;
+  /** 任务状态： pending 、 in_progress 、 done 、 failed */
+  status: string;
+}
+
+export interface TaskPlan200ResponsePlanItem {
+  /** 任务计划版本号，每次更新计划会递增 */
+  revision: number;
+  /** 任务列表 */
+  tasks: TaskPlan200ResponsePlanItemTasksItem[];
+  /** 计划最近更新时间 */
+  updated_at: string;
+  /** 当前 session_id */
+  session_id: string;
+}
+
+export interface TaskPlan200Response {
+  plan?: TaskPlan200ResponsePlanItem[];
+}
+
+export interface TaskPlan404Response {
+  error: string;
+}
+
+export interface SessionHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface Session200ResponseSessionsItem {
+  /** session id */
+  id: string;
+  /** session 名 */
+  name: string;
+  /** 持久化类型，通常为 durable */
+  persistence: string;
+  /** 创建时间 */
+  created_at: string;
+  /** 最近 active 时间 */
+  last_active_at: string;
+}
+
+export interface Session200Response {
+  /** session 列表 */
+  sessions: Session200ResponseSessionsItem[];
+}
+
+export interface SessionRenameHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface SessionRenameBodyRequest {
+  /** session id */
+  session_id: string;
+  /** 新 session 名 */
+  name: string;
+}
+
+export interface SessionRename200Response {
+  /** session id */
+  id: string;
+  /** session 名 */
+  name: string;
+  /** 持久化类型，通常为 durable */
+  persistence: string;
+  /** 创建时间 */
+  created_at: string;
+  /** 最近 active 时间 */
+  last_active_at: string;
 }
 
 export interface SessionMessagesQueryRequest {
@@ -133,42 +224,4 @@ export interface SessionMessages200ResponseMessagesItem {
 
 export interface SessionMessages200Response {
   messages: SessionMessages200ResponseMessagesItem[];
-}
-
-export interface TaskPlanPathRequest {
-  /** 目标会话 ID */
-  session_id: string;
-}
-
-export interface TaskPlanHeaderRequest {
-  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
-  Authorization?: string;
-}
-
-export interface TaskPlan200ResponsePlanItemTasksItem {
-  /** 任务唯一 ID */
-  id: string;
-  /** 任务描述 */
-  desc: string;
-  /** 任务状态： pending 、 in_progress 、 done 、 failed */
-  status: string;
-}
-
-export interface TaskPlan200ResponsePlanItem {
-  /** 当前 session_id */
-  session_id: string;
-  /** 任务计划版本号，每次更新计划会递增 */
-  revision: number;
-  /** 任务列表 */
-  tasks: TaskPlan200ResponsePlanItemTasksItem[];
-  /** 计划最近更新时间 */
-  updated_at: string;
-}
-
-export interface TaskPlan200Response {
-  plan?: TaskPlan200ResponsePlanItem[];
-}
-
-export interface TaskPlan404Response {
-  error: string;
 }

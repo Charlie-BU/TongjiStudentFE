@@ -1,3 +1,50 @@
+## CHANGELOG - 2026-08-11 00:18 - 增加会话侧栏与历史恢复，并修复新建聊天竞态
+
+### 撰写时间
+
+- 2026-08-11 00:18
+
+### Base Commit
+
+- e408104bcd5b78a6e3e23ca3c339cff81970c30d
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+聊天页此前只承载当前浏览器生命周期内的一轮轮流式对话，用户无法从界面查看最近会话，也无法通过 URL 回到既有记录。本次把页面主线扩展为“会话路由 -> 历史恢复 -> 聊天展示”，并加入可折叠的会话侧栏和窄屏抽屉布局。
+
+实现后复查发现一个边界：历史请求尚未完成时点击 New Chat，旧响应仍可能回填空白页。因此没有只依赖 `AbortController`，而是沿用恢复序号作为结果归属判断，让新聊天能够明确淘汰旧恢复结果。
+
+### 改动概览
+
+- 新增 `useSessionRoute`，将 `/session/:sessionId` 映射为当前会话，并支持侧栏选择、新建聊天和浏览器前进后退。
+- 新增 `SessionSidebar`，请求最近会话、合并当前页面新创建的会话，并提供桌面可拖拽宽度和移动端抽屉入口。
+- `useChat` 新增 `activeSessionId`、`restoreSession` 与 `startNewChat`，通过 `SessionMessagesGET` 恢复历史消息、工具活动和每轮耗时。
+- `startNewChat` 会递增 `restoreSequenceRef`，使未完成的历史响应失效；`app.test.tsx` 覆盖恢复中点击 New Chat 后旧回答不可见。
+- 聊天内容区改为独立滚动容器，输入框跟随内容宽度并避开滚动条；CAM 客户端同步会话列表、命名和消息历史接口定义。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`App` 消费 `useSessionRoute.sessionId`，在路径变化时调用 `useChat.restoreSession` 或 `startNewChat`；`SessionSidebar` 只向上层发出选择和新建意图。
+- 当前改动：`restoreSession` 为每次历史请求分配递增序号。New Chat 会推进该序号并清空当前展示，所以较早请求即使随后返回，也无法通过结果归属校验并写入 `turns`。
+- 下游影响：`ChatArea` 继续只消费 `ChatController`，因此流式渲染、工作时长和输入组件无需感知路由或历史接口。新增的回归用例守住了路由切换时的页面状态边界。
+
+### 改动结果与业务影响
+
+当前页面可以通过会话 URL 恢复最近 100 条历史消息，并在新建会话后立即更新侧栏与地址栏。会话恢复与 New Chat 的并发场景不再把旧回答显示到新聊天中。`pnpm check` 已验证 5 个测试文件、17 个用例、测试类型检查、ESLint 与生产构建。
+
+### 风险与待办
+
+- 会话列表与持久会话创建目前仍以空请求调用。接口契约要求 Bearer token 才能列出用户持久会话；该认证接入问题已按本次指示暂时豁免，后续应统一注入 OAuth token 后再开放跨刷新历史能力。
+- Vite 仍提示主 JavaScript 包超过 500 kB。本次没有改变拆包策略，后续可按需加载 Markdown 或会话侧栏模块。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): add session sidebar and history restore`
+
 ## CHANGELOG - 2026-08-10 20:06 - 接入 CAM/Axios SSE 聊天服务并移除运行时 Mock
 
 ### 撰写时间

@@ -1,19 +1,34 @@
-import { useEffect, useRef, useState } from "react";
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type CSSProperties,
+} from "react";
 import { SearchOutlined } from "@ant-design/icons";
 import { Collapse, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
-import { useChat, type ChatTurn } from "../../hooks/use-chat";
+import {
+    type ChatController,
+    type ChatTurn,
+} from "../../hooks/use-chat";
 import { ChatInput } from "../chat-input/ChatInput";
 import "./ChatArea.css";
 
 const { Text } = Typography;
 
+type ChatAreaProps = {
+    chat: ChatController;
+};
+
 // ChatArea 只负责会话展示，调用和状态由 useChat 管理。
-export function ChatArea() {
+export function ChatArea({ chat }: ChatAreaProps) {
     const { input, isStreaming, setInput, stopStreaming, submitQuestion, turns } =
-        useChat();
+        chat;
+    const chatMainRef = useRef<HTMLElement | null>(null);
     const conversationEndRef = useRef<HTMLDivElement | null>(null);
     const [currentTime, setCurrentTime] = useState(() => Date.now());
+    const [scrollbarWidth, setScrollbarWidth] = useState(0);
 
     const activeTurnStartedAt = turns.find(
         (turn) => turn.state === "streaming",
@@ -38,39 +53,68 @@ export function ChatArea() {
         });
     }, [turns]);
 
+    useLayoutEffect(() => {
+        const chatMain = chatMainRef.current;
+        if (!chatMain) {
+            return;
+        }
+
+        const measureScrollbar = (): void => {
+            setScrollbarWidth(chatMain.offsetWidth - chatMain.clientWidth);
+        };
+
+        measureScrollbar();
+        if (typeof ResizeObserver === "undefined") {
+            return;
+        }
+
+        const observer = new ResizeObserver(measureScrollbar);
+        observer.observe(chatMain);
+        return () => observer.disconnect();
+    }, [turns]);
+
     return (
-        <main className="chat-shell tongji-student-theme">
-            <section className="chat-main">
-                <div className="conversation-list">
-                    {turns.map((turn) => (
-                        <article key={turn.id} className="chat-turn">
-                            <div className="message user-message">
-                                <Text>{turn.question}</Text>
-                            </div>
-                            <div className="assistant-section">
-                                <AgentActivity
-                                    key={`${turn.id}-${turn.state}`}
-                                    elapsedMs={
-                                        turn.durationMs ??
-                                        (turn.state === "streaming"
-                                            ? currentTime - turn.startedAt
-                                            : undefined)
-                                    }
-                                    turn={turn}
-                                />
-                                <div className="message assistant-message">
-                                    {turn.answer ? (
-                                        <div className="markdown-content">
-                                            <ReactMarkdown>
-                                                {turn.answer}
-                                            </ReactMarkdown>
-                                        </div>
-                                    ) : null}
+        <main
+            className="chat-shell tongji-student-theme"
+            style={
+                {
+                    "--chat-scrollbar-width": `${scrollbarWidth}px`,
+                } as CSSProperties
+            }
+        >
+            <section className="chat-main" ref={chatMainRef}>
+                <div className="chat-content">
+                    <div className="conversation-list">
+                        {turns.map((turn) => (
+                            <article key={turn.id} className="chat-turn">
+                                <div className="message user-message">
+                                    <Text>{turn.question}</Text>
                                 </div>
-                            </div>
-                        </article>
-                    ))}
-                    <div className="conversation-end" ref={conversationEndRef} />
+                                <div className="assistant-section">
+                                    <AgentActivity
+                                        key={`${turn.id}-${turn.state}`}
+                                        elapsedMs={
+                                            turn.durationMs ??
+                                            (turn.state === "streaming"
+                                                ? currentTime - turn.startedAt
+                                                : undefined)
+                                        }
+                                        turn={turn}
+                                    />
+                                    <div className="message assistant-message">
+                                        {turn.answer ? (
+                                            <div className="markdown-content">
+                                                <ReactMarkdown>
+                                                    {turn.answer}
+                                                </ReactMarkdown>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
+                        <div className="conversation-end" ref={conversationEndRef} />
+                    </div>
                 </div>
             </section>
 

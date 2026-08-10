@@ -1,9 +1,15 @@
 .chat-input-panel {
-  position: fixed;
-  right: 0;
+  position: absolute;
+  right: var(--chat-scrollbar-width, 0px);
   bottom: 0;
   left: 0;
-  width: min(888px, calc(100% - 32px));
+  width: min(
+    var(--chat-content-max-width),
+    calc(
+      100% - var(--chat-scrollbar-width, 0px) - var(--chat-content-gutter) -
+        var(--chat-content-gutter)
+    )
+  );
   margin: 0 auto;
   padding: 14px 0 22px;
   background: linear-gradient(to bottom, transparent, var(--ant-color-bg-layout) 28%);
@@ -128,10 +134,4 @@
   height: 11px;
   border-radius: 2px;
   background: var(--ant-color-text-light-solid);
-}
-
-@media (max-width: 640px) {
-  .chat-input-panel {
-    width: min(100% - 24px, 640px);
-  }
 }
