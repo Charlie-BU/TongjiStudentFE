@@ -1,4 +1,6 @@
 .chat-shell {
+  --chat-input-clearance: 144px;
+
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -33,7 +35,7 @@
   width: min(920px, 100%);
   margin: 0 auto;
   flex: 1;
-  padding: 20px 16px 144px;
+  padding: 20px 16px var(--chat-input-clearance);
 }
 
 .welcome-panel {
@@ -48,7 +50,7 @@
 
 .suggestion-list {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   margin-top: 32px;
 }
 
@@ -61,6 +63,10 @@
 .conversation-list {
   display: grid;
   gap: 32px;
+}
+
+.conversation-end {
+  scroll-margin-bottom: var(--chat-input-clearance);
 }
 
 .chat-turn {
@@ -92,7 +98,6 @@
 
 .assistant-section {
   display: grid;
-  gap: 6px;
 }
 
 .assistant-message {
@@ -104,71 +109,73 @@
   line-height: 24px;
 }
 
-.answer-text.ant-typography {
-  margin: 0;
-  font-size: inherit;
-  line-height: inherit;
-  white-space: pre-wrap;
+.markdown-content {
+  font-size: 16px;
+  line-height: 24px;
+  white-space: normal;
+}
+
+.markdown-content p {
+  margin-block: 16px;
 }
 
 .activity-collapse {
-  max-width: 720px;
+  width: 100%;
+  border-radius: 0;
 }
 
-.activity-collapse .ant-collapse-header {
-  padding: 8px 4px !important;
-  color: var(--ant-color-text-secondary) !important;
-  font-size: 13px;
+.activity-collapse .ant-collapse-item {
+  border-radius: 0;
 }
 
-.activity-collapse .ant-collapse-content-box {
-  padding: 4px 0 10px !important;
+.activity-collapse-open {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.activity-collapse .ant-collapse-content,
+.activity-content {
+  margin-inline: 0;
+  padding-inline: 0;
 }
 
 .activity-content {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 12px;
-  background: var(--ant-color-fill-alter);
+  gap: 0;
 }
 
 .reasoning-block {
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--ant-color-split);
+  color: var(--ant-color-text);
+  font-size: 16px;
+  line-height: 24px;
 }
 
 .reasoning-block .ant-typography-paragraph {
-  margin: 4px 0 0;
+  margin: 0;
 }
 
 .activity-row {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  color: var(--ant-color-text-secondary);
+  font-size: 16px;
+  line-height: 24px;
 }
 
-.activity-row > div {
-  display: grid;
-  gap: 2px;
+.activity-row + .activity-row {
+  margin-top: 16px;
 }
 
-.activity-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 6px;
-  border-radius: 50%;
+.activity-content > .activity-row:first-child {
+  margin-top: 12px;
 }
 
-.activity-dot.running {
-  background: var(--ant-color-primary);
-  box-shadow: 0 0 0 4px var(--ant-color-primary-bg);
+.activity-row .anticon {
+  color: inherit;
+  font-size: 16px;
 }
 
-.activity-dot.completed {
-  background: var(--ant-color-success);
-}
 
 @media (max-width: 640px) {
   .chat-header {

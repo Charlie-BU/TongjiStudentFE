@@ -1,3 +1,48 @@
+## CHANGELOG - 2026-08-10 18:08 - 支持 Markdown 流式回答与工作过程展示
+
+### 撰写时间
+
+- 2026-08-10 18:08
+
+### Base Commit
+
+- efd671142e43995c95f5999b472753b1150c6cd2
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+此前聊天页把 Agent 回答和工作说明作为纯文本渲染，换行可以保留，但标题、列表等结构信息会丢失。与此同时，固定输入栏会遮挡对话末尾，工作过程的视觉层级也不够接近最终回答。此次改动的目标是让流式消息保留 Markdown 语义，并将滚动终点、活动区和输入区的布局收敛到同一阅读节奏。
+
+### 改动概览
+
+- 新增 `react-markdown`，在 `ChatArea` 中渲染 assistant 最终回答与 reasoning 的 Markdown 标题、段落和列表。
+- 调整活动区：以 `SearchOutlined` 表示检索条目，按回答状态显示“正在准备回答… / 正在工作 / 工作过程”，并简化 `Collapse` 的边框与内边距。
+- 为聊天底部预留 `--chat-input-clearance`，将其同时用于会话底部 padding 和 `scroll-margin-bottom`，使自动滚动终点避开固定输入栏。
+- 扩展输入框最大宽度，并同步对话消息、活动区和 Markdown 正文的排版样式。
+- 增加 Markdown 渲染与自动滚动测试；`pnpm check` 覆盖 10 个离线用例并通过。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`ChatInput` 将受控文本提交给 `ChatArea.submitQuestion`；该函数仍按轮次消费 `streamMockReply` 的 `StreamEvent`。
+- 当前改动：`delta` 累积到 `ChatTurn.answer` 后交由 `ReactMarkdown` 展示；`reasoning` 在活动折叠区使用同一渲染器。`conversationEndRef` 对应的节点新增滚动安全区，仍在 `turns` 更新后调用 `scrollIntoView`。
+- 下游影响：消息内容现在以 Markdown DOM 结构提供给页面和辅助技术；测试将断言标题和列表，而不再把回答当作单一纯文本节点。真实 SSE 接入时仍只需产生现有事件类型。
+
+### 改动结果与业务影响
+
+当前聊天回答可展示层级化文本，工作过程与最终回答使用一致的阅读语义；滚动位置与固定输入栏不再直接重叠。构建、lint、测试类型检查及 10 个单元测试均已通过。
+
+### 风险与待办
+
+- `react-markdown` 使生产主包增加约 113 kB（约 34 kB gzip）。该问题已登记在 `.codex/skills/commit-quality-reviewer/docs/whitelist.md`，作为 Markdown 展示能力的临时权衡，失效时间为 2026-09-10；届时应结合真实性能数据评估拆包或按需加载。
+- 当前只验证离线 Mock 流；真实 SSE 的错误、鉴权和网络中断仍需在服务适配层完成后补测。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): render streaming messages as markdown`
+
 ## CHANGELOG - 2026-08-10 01:46 - 调整对话消息的阅读层级
 
 ### 撰写时间

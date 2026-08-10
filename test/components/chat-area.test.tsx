@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,10 +37,54 @@ describe("ChatArea", () => {
     expect(await screen.findByText("请携带录取通知书。")).toBeInTheDocument();
     expect(screen.getByText("新生报到需要准备哪些材料？")).toBeInTheDocument();
 
-    await user.click(screen.getByText("查看工作过程"));
-    expect(screen.getByText("Agent 说明")).toBeInTheDocument();
+    await user.click(screen.getByText("工作过程"));
     expect(screen.getByText("先检索新生指南")).toBeInTheDocument();
     expect(screen.getByText("检索校园知识库")).toBeInTheDocument();
+  });
+
+  it("应将最终回答和工作过程渲染为 Markdown", async () => {
+    const user = userEvent.setup();
+    streamMockReply.mockImplementation(async function* () {
+      yield { type: "reasoning", text: "## 检索计划" };
+      yield { type: "delta", text: "## 报到材料\n\n- 录取通知书" };
+      yield { type: "completed" };
+    });
+
+    render(<ChatArea />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "需要哪些材料？");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "报到材料", level: 2 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("录取通知书")).toBeInTheDocument();
+
+    await user.click(screen.getByText("工作过程"));
+    expect(
+      screen.getByRole("heading", { name: "检索计划", level: 2 }),
+    ).toBeInTheDocument();
+  });
+
+  it("应在发送和流式更新时滚动到输入框上方的对话末尾", async () => {
+    const user = userEvent.setup();
+    streamMockReply.mockImplementation(async function* () {
+      yield { type: "delta", text: "正在生成回答" };
+      yield { type: "completed" };
+    });
+
+    render(<ChatArea />);
+    vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
+
+    await user.type(screen.getByLabelText("输入校园问题"), "你好");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    await waitFor(() => {
+      expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+        behavior: "smooth",
+        block: "end",
+      });
+    });
   });
 
   it("应在停止生成后展示中止结果，并忽略后续流事件", async () => {

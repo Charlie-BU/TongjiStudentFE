@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { SearchOutlined } from "@ant-design/icons";
 import { Collapse, Typography } from "antd";
+import ReactMarkdown from "react-markdown";
 import { ChatInput } from "../chat-input/ChatInput";
 import { streamMockReply, type StreamEvent } from "./mock-stream";
 import "./ChatArea.css";
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 // Activity 表示一轮对话中的 Agent 工作节点。
 type Activity = {
@@ -112,23 +114,17 @@ export function ChatArea() {
                                 />
                                 <div className="message assistant-message">
                                     {turn.answer ? (
-                                        <Paragraph className="answer-text">
-                                            {turn.answer}
-                                        </Paragraph>
-                                    ) : turn.state === "streaming" ? (
-                                        <Text type="secondary">
-                                            正在准备回答…
-                                        </Text>
-                                    ) : (
-                                        <Text type="secondary">
-                                            本轮回答已停止。
-                                        </Text>
-                                    )}
+                                        <div className="markdown-content">
+                                            <ReactMarkdown>
+                                                {turn.answer}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : null}
                                 </div>
                             </div>
                         </article>
                     ))}
-                    <div ref={conversationEndRef} />
+                    <div className="conversation-end" ref={conversationEndRef} />
                 </div>
             </section>
 
@@ -146,51 +142,65 @@ export function ChatArea() {
 // AgentActivity 展示与最终 Assistant Message 分离的 Agent 工作过程。
 function AgentActivity({ turn }: { turn: ChatTurn }) {
     const [isOpen, setIsOpen] = useState(turn.state === "streaming");
+    const isStreaming = turn.state === "streaming";
+    const activityLabel =
+        !turn.answer && isStreaming
+            ? "正在准备回答…"
+            : !turn.answer && turn.state === "aborted"
+              ? "本轮回答已停止。"
+              : isStreaming
+                ? "正在工作"
+                : "工作过程";
 
     if (turn.activities.length === 0 && !turn.reasoning) {
         return null;
     }
 
-    const isStreaming = turn.state === "streaming";
     const activityContent = (
         <div className="activity-content">
             {turn.reasoning ? (
-                <div className="reasoning-block">
-                    <Text type="secondary">Agent 说明</Text>
-                    <Paragraph>{turn.reasoning}</Paragraph>
+                <div className="reasoning-block markdown-content">
+                    <ReactMarkdown>{turn.reasoning}</ReactMarkdown>
                 </div>
             ) : null}
-            {turn.activities.map((activity) => (
-                <div key={activity.id} className="activity-row">
-                    <span
-                        className={`activity-dot ${activity.state}`}
-                        aria-hidden="true"
-                    />
-                    <div>
-                        <Text>{activity.label}</Text>
-                        {activity.detail ? (
-                            <Text type="secondary">{activity.detail}</Text>
-                        ) : null}
-                        {activity.durationMs ? (
-                            <Text type="secondary">
-                                耗时 {activity.durationMs}ms
-                            </Text>
-                        ) : null}
+            {turn.activities.map((activity) => {
+                return (
+                    <div key={activity.id} className="activity-row">
+                        <SearchOutlined aria-hidden="true" />
+                        <Text
+                            type="secondary"
+                            style={{ fontSize: 16, lineHeight: "24px" }}
+                        >
+                            {activity.label}
+                            {activity.detail ? ` · ${activity.detail}` : ""}
+                            {activity.durationMs
+                                ? ` · 耗时 ${activity.durationMs}ms`
+                                : ""}
+                        </Text>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 
     return (
         <Collapse
             activeKey={isOpen ? ["activity"] : []}
-            className="activity-collapse"
+            className={`activity-collapse${isOpen ? " activity-collapse-open" : ""}`}
             ghost
+            styles={{
+                body: { padding: "0 0" },
+                header: {
+                    color: "var(--ant-color-text-tertiary)",
+                    fontSize: 16,
+                    lineHeight: "24px",
+                    padding: "0 0 8px",
+                },
+            }}
             items={[
                 {
                     key: "activity",
-                    label: isStreaming ? "正在处理" : "查看工作过程",
+                    label: activityLabel,
                     children: activityContent,
                 },
             ]}
