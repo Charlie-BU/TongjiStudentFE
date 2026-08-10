@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['coverage', 'dist']),
+  globalIgnores(['coverage', 'dist', 'src/cam-auto-generate']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

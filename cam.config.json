@@ -1,6 +1,7 @@
-
 {
-  "services": {},
+  "services": {
+    "TongjiStudent": "agent/tongjistudent/server@latest"
+  },
   "outDir": "src/cam-auto-generate",
   "generateConfig": {}
 }

@@ -1,3 +1,57 @@
+## CHANGELOG - 2026-08-10 20:06 - 接入 CAM/Axios SSE 聊天服务并移除运行时 Mock
+
+### 撰写时间
+
+- 2026-08-10 20:06
+
+### Base Commit
+
+- b48cb30ae70a1fdec744a7b4148780912bd6579b
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+聊天页此前仅消费本地异步生成器，无法创建真实会话或展示服务端 SSE 返回。CAM 已生成同济学生服务的 OpenAPI 客户端，但该目录属于只读生成产物，不能让 UI 直接耦合其类名和响应字段。本次改动将聊天主链路替换为 Axios 驱动的服务端会话与 SSE 流，并同步清理运行时 Mock 数据。
+
+### 改动概览
+
+- 新增 Axios HTTP 客户端，开发环境通过既有 `/api` Vite Proxy 请求 AI 服务。
+- 新增 CAM 隔离适配层：会话创建通过 `TongjiStudentService` 完成，并将生成响应收敛为稳定的应用会话模型。
+- 新增 SSE 解析与聊天网关：POST 消息接口使用 Axios fetch adapter 流式读取，支持分块解帧、事件映射、取消、失败态及按 `seq` 去重。
+- `ChatArea` 改为消费可注入的 `ChatGateway`；首次发送创建会话，后续轮次复用 `session_id`，不再依赖本地 Mock 流。
+- 删除 `mock-stream.ts` 及其专属测试；测试通过注入网关替身隔离网络，运行时不再包含模拟回答。
+- 更新工作过程标题状态、输入区滚动安全区和 Markdown 内容排版；Markdown 正文保持 16px，并将块内行高调整为 28px。
+- 将 CAM 生成目录排除在 ESLint 业务代码检查外，避免修改只读生成代码以适配手写规则。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`ChatInput` 提交问题到 `ChatArea.submitQuestion`，页面创建 `AbortController` 并在首轮调用 `ChatGateway.createSession()`。
+- 当前改动：`ChatGateway.streamMessage()` 使用 `POST /v1/sessions/:session_id/messages` 消费 `text/event-stream`；解析器将服务端 `agent.status`、`assistant.reasoning`、`assistant.delta`、工具调用和 run 事件映射为 `ChatStreamEvent`，再由既有 `updateTurn` 投影为页面状态。
+- 下游影响：UI 仅依赖领域事件和稳定会话模型，CAM 生成客户端及原始 `data` 字段被限制在 API 适配层。用户停止生成时，同一 `AbortSignal` 会中止 Axios 请求并将本轮标记为已停止。
+
+### 改动结果与业务影响
+
+ChatBot 已可在匿名会话下创建服务端 session 并消费真实 SSE 回答；服务端异常会转化为可见失败标题，重复或倒序事件不会重复写入页面。SSE 解析器和 ChatArea 分别具备独立测试边界，后续认证、历史恢复及任务计划展示可在同一网关上扩展。
+
+### 风险与待办
+
+- CAM 事件的 `data` 仍声明为 `any`；当前适配层已兼容常见字段名，待服务端确认各事件载荷后应收紧运行时校验。
+- 当前实现以匿名会话为默认路径；同济 OAuth token 的获取、存储和 `Authorization` 注入尚未接入。
+- Axios fetch adapter 依赖浏览器的 `ReadableStream` 支持，发布前应在目标浏览器环境验证 SSE 连接和取消行为。
+- Vite 仍提示主 JavaScript 包超过 500 kB，未因本次接入阻塞构建；可在后续评估按需加载 Markdown 或聊天模块。
+
+### 验证结果
+
+- `pnpm test`：4 个测试文件、11 个用例通过。
+- `pnpm test:typecheck`、`pnpm lint`、`pnpm build` 与 `git diff --check` 通过。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): connect chatbot to CAM SSE service`
+
 ## CHANGELOG - 2026-08-10 18:08 - 支持 Markdown 流式回答与工作过程展示
 
 ### 撰写时间

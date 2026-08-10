@@ -2,10 +2,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const streamMockReply = vi.hoisted(() => vi.fn());
-
-vi.mock("../../src/components/chat-area/mock-stream", () => ({
-  streamMockReply,
+const chatGateway = vi.hoisted(() => ({
+  createSession: vi.fn(),
+  streamMessage: vi.fn(),
 }));
 
 import { ChatArea } from "../../src/components/chat-area/ChatArea";
@@ -17,19 +16,21 @@ function abortError(): DOMException {
 
 describe("ChatArea", () => {
   beforeEach(() => {
-    streamMockReply.mockReset();
+    chatGateway.createSession.mockReset();
+    chatGateway.createSession.mockResolvedValue({ id: "session-1", persistence: "ephemeral" });
+    chatGateway.streamMessage.mockReset();
   });
 
   it("应从文本输入创建问题，并将 Agent 工作过程和最终回答分开呈现", async () => {
     const user = userEvent.setup();
-    streamMockReply.mockImplementation(async function* () {
+    chatGateway.streamMessage.mockImplementation(async function* () {
       yield { type: "reasoning", text: "先检索新生指南" };
       yield { type: "tool_started", id: "knowledge", label: "检索校园知识库" };
       yield { type: "delta", text: "请携带录取通知书。" };
       yield { type: "completed" };
     });
 
-    render(<ChatArea />);
+    render(<ChatArea chatGateway={chatGateway} />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "新生报到需要准备哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -44,13 +45,13 @@ describe("ChatArea", () => {
 
   it("应将最终回答和工作过程渲染为 Markdown", async () => {
     const user = userEvent.setup();
-    streamMockReply.mockImplementation(async function* () {
+    chatGateway.streamMessage.mockImplementation(async function* () {
       yield { type: "reasoning", text: "## 检索计划" };
       yield { type: "delta", text: "## 报到材料\n\n- 录取通知书" };
       yield { type: "completed" };
     });
 
-    render(<ChatArea />);
+    render(<ChatArea chatGateway={chatGateway} />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "需要哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -68,12 +69,12 @@ describe("ChatArea", () => {
 
   it("应在发送和流式更新时滚动到输入框上方的对话末尾", async () => {
     const user = userEvent.setup();
-    streamMockReply.mockImplementation(async function* () {
+    chatGateway.streamMessage.mockImplementation(async function* () {
       yield { type: "delta", text: "正在生成回答" };
       yield { type: "completed" };
     });
 
-    render(<ChatArea />);
+    render(<ChatArea chatGateway={chatGateway} />);
     vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
 
     await user.type(screen.getByLabelText("输入校园问题"), "你好");
@@ -89,7 +90,7 @@ describe("ChatArea", () => {
 
   it("应在停止生成后展示中止结果，并忽略后续流事件", async () => {
     const user = userEvent.setup();
-    streamMockReply.mockImplementation(async function* (_question: string, signal: AbortSignal) {
+    chatGateway.streamMessage.mockImplementation(async function* ({ signal }: { signal: AbortSignal }) {
       yield { type: "status", label: "正在理解问题", detail: "整理信息" };
       await new Promise<void>((_resolve, reject) => {
         signal.addEventListener("abort", () => reject(abortError()), { once: true });
@@ -97,7 +98,7 @@ describe("ChatArea", () => {
       yield { type: "delta", text: "不应出现的后续内容" };
     });
 
-    render(<ChatArea />);
+    render(<ChatArea chatGateway={chatGateway} />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "校园卡应该在哪里办理？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -105,5 +106,20 @@ describe("ChatArea", () => {
 
     expect(await screen.findByText("本轮回答已停止。")).toBeInTheDocument();
     expect(screen.queryByText("不应出现的后续内容")).not.toBeInTheDocument();
+  });
+
+  it("应使用通用文案展示流式失败，不能泄漏服务端详情", async () => {
+    const user = userEvent.setup();
+    chatGateway.streamMessage.mockImplementation(async function* () {
+      yield { type: "failed", message: "数据库连接串校验失败" };
+    });
+
+    render(<ChatArea chatGateway={chatGateway} />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "查询校园卡");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    expect(await screen.findByText("生成失败，请稍后重试。")).toBeInTheDocument();
+    expect(screen.queryByText("数据库连接串校验失败")).not.toBeInTheDocument();
   });
 });

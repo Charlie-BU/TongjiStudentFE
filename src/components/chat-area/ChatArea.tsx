@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { SearchOutlined } from "@ant-design/icons";
 import { Collapse, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
+import { tongjiStudentChatGateway } from "../../services/chat/tongji-student-chat-gateway";
+import type {
+    ChatGateway,
+    ChatStreamEvent,
+} from "../../services/chat/types";
 import { ChatInput } from "../chat-input/ChatInput";
-import { streamMockReply, type StreamEvent } from "./mock-stream";
 import "./ChatArea.css";
 
 const { Text } = Typography;
@@ -24,16 +28,24 @@ type ChatTurn = {
     answer: string;
     activities: Activity[];
     reasoning: string;
-    state: "streaming" | "completed" | "aborted";
+    error?: string;
+    state: "streaming" | "completed" | "aborted" | "failed";
 };
 
-// ChatArea 提供使用 Mock 数据演示的基础流式 Chatbot。
-export function ChatArea() {
+type ChatAreaProps = {
+    chatGateway?: ChatGateway;
+};
+
+// ChatArea 展示由 ChatGateway 驱动的流式 Chatbot。
+export function ChatArea({
+    chatGateway = tongjiStudentChatGateway,
+}: ChatAreaProps) {
     const [input, setInput] = useState("");
     const [turns, setTurns] = useState<ChatTurn[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
     const conversationEndRef = useRef<HTMLDivElement | null>(null);
+    const sessionIdRef = useRef<string | null>(null);
     const turnSequenceRef = useRef(0);
 
     useEffect(() => {
@@ -43,7 +55,7 @@ export function ChatArea() {
         });
     }, [turns]);
 
-    // submitQuestion 启动一轮 Mock 流式回答。
+    // submitQuestion 创建或复用会话，并消费本轮 SSE 事件。
     async function submitQuestion(value = input): Promise<void> {
         const question = value.trim();
         if (!question || isStreaming) {
@@ -69,20 +81,38 @@ export function ChatArea() {
         ]);
 
         try {
-            for await (const event of streamMockReply(
-                question,
-                controller.signal,
-            )) {
+            if (!sessionIdRef.current) {
+                const session = await chatGateway.createSession();
+                sessionIdRef.current = session.id;
+            }
+
+            for await (const event of chatGateway.streamMessage({
+                sessionId: sessionIdRef.current,
+                message: question,
+                signal: controller.signal,
+            })) {
                 setTurns((currentTurns) =>
                     currentTurns.map((turn) => updateTurn(turn, turnId, event)),
                 );
             }
         } catch (error) {
-            if (isAbortError(error)) {
+            if (controller.signal.aborted || isAbortError(error)) {
                 setTurns((currentTurns) =>
                     currentTurns.map((turn) =>
                         turn.id === turnId
                             ? { ...turn, state: "aborted" }
+                            : turn,
+                        ),
+                );
+            } else {
+                setTurns((currentTurns) =>
+                    currentTurns.map((turn) =>
+                        turn.id === turnId
+                            ? {
+                                  ...turn,
+                                  error: getErrorMessage(),
+                                  state: "failed",
+                              }
                             : turn,
                     ),
                 );
@@ -93,7 +123,7 @@ export function ChatArea() {
         }
     }
 
-    // stopStreaming 中止当前 Mock 流。
+    // stopStreaming 中止当前服务端流。
     function stopStreaming(): void {
         abortControllerRef.current?.abort();
     }
@@ -144,15 +174,16 @@ function AgentActivity({ turn }: { turn: ChatTurn }) {
     const [isOpen, setIsOpen] = useState(turn.state === "streaming");
     const isStreaming = turn.state === "streaming";
     const activityLabel =
-        !turn.answer && isStreaming
+        turn.error ??
+        (!turn.answer && isStreaming
             ? "正在准备回答…"
             : !turn.answer && turn.state === "aborted"
               ? "本轮回答已停止。"
               : isStreaming
                 ? "正在工作"
-                : "工作过程";
+                : "工作过程");
 
-    if (turn.activities.length === 0 && !turn.reasoning) {
+    if (turn.activities.length === 0 && !turn.reasoning && !turn.error) {
         return null;
     }
 
@@ -213,7 +244,7 @@ function AgentActivity({ turn }: { turn: ChatTurn }) {
 function updateTurn(
     turn: ChatTurn,
     turnId: string,
-    event: StreamEvent,
+    event: ChatStreamEvent,
 ): ChatTurn {
     if (turn.id !== turnId) {
         return turn;
@@ -279,10 +310,22 @@ function updateTurn(
                 })),
                 state: "completed",
             };
+        case "failed":
+            return {
+                ...turn,
+                // Gateway 实现可能携带诊断信息；UI 始终使用脱敏失败提示。
+                error: getErrorMessage(),
+                state: "failed",
+            };
     }
 }
 
 // isAbortError 判断流是否由用户主动停止。
 function isAbortError(error: unknown): boolean {
     return error instanceof DOMException && error.name === "AbortError";
+}
+
+// getErrorMessage 将传输层异常转换为不会泄漏服务端细节的页面提示。
+function getErrorMessage(): string {
+    return "生成失败，请稍后重试。";
 }
