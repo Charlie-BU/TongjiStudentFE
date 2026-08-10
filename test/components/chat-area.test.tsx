@@ -2,10 +2,12 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const chatGateway = vi.hoisted(() => ({
-  createSession: vi.fn(),
-  streamMessage: vi.fn(),
+const tongjiStudentService = vi.hoisted(() => ({
+  SessionMessagesPOST: vi.fn(),
+  SessionPOST: vi.fn(),
 }));
+
+vi.mock("../../src/services/tongji-student", () => ({ tongjiStudentService }));
 
 import { ChatArea } from "../../src/components/chat-area/ChatArea";
 
@@ -16,21 +18,21 @@ function abortError(): DOMException {
 
 describe("ChatArea", () => {
   beforeEach(() => {
-    chatGateway.createSession.mockReset();
-    chatGateway.createSession.mockResolvedValue({ id: "session-1", persistence: "ephemeral" });
-    chatGateway.streamMessage.mockReset();
+    tongjiStudentService.SessionPOST.mockReset();
+    tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "session-1", persistence: "ephemeral" });
+    tongjiStudentService.SessionMessagesPOST.mockReset();
   });
 
   it("应从文本输入创建问题，并将 Agent 工作过程和最终回答分开呈现", async () => {
     const user = userEvent.setup();
-    chatGateway.streamMessage.mockImplementation(async function* () {
-      yield { type: "reasoning", text: "先检索新生指南" };
-      yield { type: "tool_started", id: "knowledge", label: "检索校园知识库" };
-      yield { type: "delta", text: "请携带录取通知书。" };
-      yield { type: "completed" };
-    });
+    mockSseEvents([
+      { type: "reasoning", text: "先检索新生指南" },
+      { type: "tool_started", id: "knowledge", label: "检索校园知识库" },
+      { type: "delta", text: "请携带录取通知书。" },
+      { type: "completed" },
+    ]);
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "新生报到需要准备哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -45,13 +47,13 @@ describe("ChatArea", () => {
 
   it("应将最终回答和工作过程渲染为 Markdown", async () => {
     const user = userEvent.setup();
-    chatGateway.streamMessage.mockImplementation(async function* () {
-      yield { type: "reasoning", text: "## 检索计划" };
-      yield { type: "delta", text: "## 报到材料\n\n- 录取通知书" };
-      yield { type: "completed" };
-    });
+    mockSseEvents([
+      { type: "reasoning", text: "## 检索计划" },
+      { type: "delta", text: "## 报到材料\n\n- 录取通知书" },
+      { type: "completed" },
+    ]);
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "需要哪些材料？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -69,12 +71,12 @@ describe("ChatArea", () => {
 
   it("应在发送和流式更新时滚动到输入框上方的对话末尾", async () => {
     const user = userEvent.setup();
-    chatGateway.streamMessage.mockImplementation(async function* () {
-      yield { type: "delta", text: "正在生成回答" };
-      yield { type: "completed" };
-    });
+    mockSseEvents([
+      { type: "delta", text: "正在生成回答" },
+      { type: "completed" },
+    ]);
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
     vi.mocked(HTMLElement.prototype.scrollIntoView).mockClear();
 
     await user.type(screen.getByLabelText("输入校园问题"), "你好");
@@ -90,15 +92,20 @@ describe("ChatArea", () => {
 
   it("应在停止生成后展示中止结果，并忽略后续流事件", async () => {
     const user = userEvent.setup();
-    chatGateway.streamMessage.mockImplementation(async function* ({ signal }: { signal: AbortSignal }) {
-      yield { type: "status", label: "正在理解问题", detail: "整理信息" };
-      await new Promise<void>((_resolve, reject) => {
-        signal.addEventListener("abort", () => reject(abortError()), { once: true });
-      });
-      yield { type: "delta", text: "不应出现的后续内容" };
-    });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(
+      async (_request: unknown, options: StreamOptions) => {
+        createSseEmitter(options)({
+          type: "status",
+          label: "正在理解问题",
+          detail: "整理信息",
+        });
+        await new Promise<void>((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => reject(abortError()), { once: true });
+        });
+      },
+    );
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "校园卡应该在哪里办理？");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -110,11 +117,9 @@ describe("ChatArea", () => {
 
   it("应使用通用文案展示流式失败，不能泄漏服务端详情", async () => {
     const user = userEvent.setup();
-    chatGateway.streamMessage.mockImplementation(async function* () {
-      yield { type: "failed", message: "数据库连接串校验失败" };
-    });
+    mockSseEvents([{ type: "failed" }]);
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
 
     await user.type(screen.getByLabelText("输入校园问题"), "查询校园卡");
     await user.click(screen.getByRole("button", { name: "发送问题" }));
@@ -127,19 +132,22 @@ describe("ChatArea", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T12:00:00Z"));
     let completeStream: (() => void) | undefined;
-    chatGateway.streamMessage.mockImplementation(async function* ({ signal }: { signal: AbortSignal }) {
-      yield { type: "status", label: "正在理解问题" };
-      await new Promise<void>((resolve) => {
-        completeStream = resolve;
-        signal.addEventListener("abort", () => resolve(), { once: true });
-      });
-      if (signal.aborted) {
-        return;
-      }
-      yield { type: "completed", durationMs: 61_000 };
-    });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(
+      async (_request: unknown, options: StreamOptions) => {
+        const emit = createSseEmitter(options);
+        emit({ type: "status", label: "正在理解问题" });
+        await new Promise<void>((resolve) => {
+          completeStream = resolve;
+          options.signal?.addEventListener("abort", () => resolve(), { once: true });
+        });
+        if (options.signal?.aborted) {
+          return;
+        }
+        emit({ type: "completed", durationMs: 61_000 });
+      },
+    );
 
-    render(<ChatArea chatGateway={chatGateway} />);
+    render(<ChatArea />);
 
     await act(async () => {
       fireEvent.change(screen.getByLabelText("输入校园问题"), {
@@ -163,3 +171,53 @@ describe("ChatArea", () => {
     vi.useRealTimers();
   });
 });
+
+type TestStreamEvent =
+  | { type: "status"; label: string; detail?: string }
+  | { type: "reasoning"; text: string }
+  | { type: "tool_started"; id: string; label: string }
+  | { type: "delta"; text: string }
+  | { type: "completed"; durationMs?: number }
+  | { type: "failed" };
+
+type StreamOptions = {
+  onDownloadProgress?: (progress: { event: { target: { responseText: string } } }) => void;
+  signal?: AbortSignal;
+};
+
+function mockSseEvents(events: TestStreamEvent[]): void {
+  tongjiStudentService.SessionMessagesPOST.mockImplementation(
+    async (_request: unknown, options: StreamOptions) => {
+      const emit = createSseEmitter(options);
+      for (const event of events) {
+        emit(event);
+      }
+    },
+  );
+}
+
+function createSseEmitter(options: StreamOptions): (event: TestStreamEvent) => void {
+  let responseText = "";
+
+  return (event) => {
+    responseText += `data: ${JSON.stringify(toServerEvent(event))}\n\n`;
+    options.onDownloadProgress?.({ event: { target: { responseText } } });
+  };
+}
+
+function toServerEvent(event: TestStreamEvent): { type: string; data: Record<string, unknown> } {
+  switch (event.type) {
+    case "status":
+      return { type: "agent.status", data: { label: event.label, detail: event.detail } };
+    case "reasoning":
+      return { type: "assistant.reasoning", data: { text: event.text } };
+    case "tool_started":
+      return { type: "tool.call.started", data: { id: event.id, label: event.label } };
+    case "delta":
+      return { type: "assistant.delta", data: { text: event.text } };
+    case "completed":
+      return { type: "run.completed", data: { duration_ms: event.durationMs } };
+    case "failed":
+      return { type: "run.failed", data: {} };
+  }
+}
