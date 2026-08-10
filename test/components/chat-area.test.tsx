@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,7 +38,7 @@ describe("ChatArea", () => {
     expect(await screen.findByText("请携带录取通知书。")).toBeInTheDocument();
     expect(screen.getByText("新生报到需要准备哪些材料？")).toBeInTheDocument();
 
-    await user.click(screen.getByText("工作过程"));
+    await user.click(screen.getByText(/已工作/));
     expect(screen.getByText("先检索新生指南")).toBeInTheDocument();
     expect(screen.getByText("检索校园知识库")).toBeInTheDocument();
   });
@@ -61,7 +61,7 @@ describe("ChatArea", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("录取通知书")).toBeInTheDocument();
 
-    await user.click(screen.getByText("工作过程"));
+    await user.click(screen.getByText(/已工作/));
     expect(
       screen.getByRole("heading", { name: "检索计划", level: 2 }),
     ).toBeInTheDocument();
@@ -121,5 +121,45 @@ describe("ChatArea", () => {
 
     expect(await screen.findByText("生成失败，请稍后重试。")).toBeInTheDocument();
     expect(screen.queryByText("数据库连接串校验失败")).not.toBeInTheDocument();
+  });
+
+  it("应从发送开始实时计时，并以 run.completed 的最终耗时定格", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-10T12:00:00Z"));
+    let completeStream: (() => void) | undefined;
+    chatGateway.streamMessage.mockImplementation(async function* ({ signal }: { signal: AbortSignal }) {
+      yield { type: "status", label: "正在理解问题" };
+      await new Promise<void>((resolve) => {
+        completeStream = resolve;
+        signal.addEventListener("abort", () => resolve(), { once: true });
+      });
+      if (signal.aborted) {
+        return;
+      }
+      yield { type: "completed", durationMs: 61_000 };
+    });
+
+    render(<ChatArea chatGateway={chatGateway} />);
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("输入校园问题"), {
+        target: { value: "你好" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "发送问题" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByText("已工作 0 秒")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(screen.getByText("已工作 2 秒")).toBeInTheDocument();
+
+    await act(async () => {
+      completeStream?.();
+      await Promise.resolve();
+    });
+    expect(screen.getByText("已工作 1 分")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 });

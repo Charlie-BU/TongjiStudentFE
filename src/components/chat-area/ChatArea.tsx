@@ -28,6 +28,8 @@ type ChatTurn = {
     answer: string;
     activities: Activity[];
     reasoning: string;
+    startedAt: number;
+    durationMs?: number;
     error?: string;
     state: "streaming" | "completed" | "aborted" | "failed";
 };
@@ -47,6 +49,23 @@ export function ChatArea({
     const conversationEndRef = useRef<HTMLDivElement | null>(null);
     const sessionIdRef = useRef<string | null>(null);
     const turnSequenceRef = useRef(0);
+    const [currentTime, setCurrentTime] = useState(() => Date.now());
+
+    const activeTurnStartedAt = turns.find(
+        (turn) => turn.state === "streaming",
+    )?.startedAt;
+
+    useEffect(() => {
+        if (activeTurnStartedAt === undefined) {
+            return;
+        }
+
+        const updateTime = (): void => setCurrentTime(Date.now());
+        updateTime();
+        const timer = window.setInterval(updateTime, 1000);
+
+        return () => window.clearInterval(timer);
+    }, [activeTurnStartedAt]);
 
     useEffect(() => {
         conversationEndRef.current?.scrollIntoView({
@@ -64,6 +83,7 @@ export function ChatArea({
 
         turnSequenceRef.current += 1;
         const turnId = `turn-${turnSequenceRef.current}`;
+        const startedAt = Date.now();
         const controller = new AbortController();
         abortControllerRef.current = controller;
         setInput("");
@@ -76,6 +96,7 @@ export function ChatArea({
                 answer: "",
                 activities: [],
                 reasoning: "",
+                startedAt,
                 state: "streaming",
             },
         ]);
@@ -140,6 +161,12 @@ export function ChatArea({
                             <div className="assistant-section">
                                 <AgentActivity
                                     key={`${turn.id}-${turn.state}`}
+                                    elapsedMs={
+                                        turn.durationMs ??
+                                        (turn.state === "streaming"
+                                            ? currentTime - turn.startedAt
+                                            : undefined)
+                                    }
                                     turn={turn}
                                 />
                                 <div className="message assistant-message">
@@ -170,18 +197,19 @@ export function ChatArea({
 }
 
 // AgentActivity 展示与最终 Assistant Message 分离的 Agent 工作过程。
-function AgentActivity({ turn }: { turn: ChatTurn }) {
+function AgentActivity({
+    elapsedMs,
+    turn,
+}: {
+    elapsedMs?: number;
+    turn: ChatTurn;
+}) {
     const [isOpen, setIsOpen] = useState(turn.state === "streaming");
-    const isStreaming = turn.state === "streaming";
     const activityLabel =
         turn.error ??
-        (!turn.answer && isStreaming
-            ? "正在准备回答…"
-            : !turn.answer && turn.state === "aborted"
+        (!turn.answer && turn.state === "aborted"
               ? "本轮回答已停止。"
-              : isStreaming
-                ? "正在工作"
-                : "工作过程");
+              : `已工作 ${formatWorkDuration(elapsedMs ?? 0)}`);
 
     if (turn.activities.length === 0 && !turn.reasoning && !turn.error) {
         return null;
@@ -308,6 +336,8 @@ function updateTurn(
                     ...activity,
                     state: "completed" as const,
                 })),
+                durationMs:
+                    event.durationMs ?? Math.max(0, Date.now() - turn.startedAt),
                 state: "completed",
             };
         case "failed":
@@ -328,4 +358,10 @@ function isAbortError(error: unknown): boolean {
 // getErrorMessage 将传输层异常转换为不会泄漏服务端细节的页面提示。
 function getErrorMessage(): string {
     return "生成失败，请稍后重试。";
+}
+
+// formatWorkDuration 将毫秒耗时格式化为面向用户的秒或分钟。
+function formatWorkDuration(durationMs: number): string {
+    const seconds = Math.max(0, Math.floor(durationMs / 1000));
+    return seconds >= 60 ? `${Math.floor(seconds / 60)} 分` : `${seconds} 秒`;
 }

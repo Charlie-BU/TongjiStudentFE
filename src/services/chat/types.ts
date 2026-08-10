@@ -5,7 +5,7 @@ export type ChatStreamEvent =
     | { type: "tool_started"; id: string; label: string }
     | { type: "tool_completed"; id: string; label: string; durationMs?: number }
     | { type: "delta"; text: string }
-    | { type: "completed" }
+    | { type: "completed"; durationMs?: number }
     | { type: "failed"; message: string };
 
 export type ChatSession = {

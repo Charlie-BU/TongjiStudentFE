@@ -60,6 +60,12 @@ describe("SSE parser", () => {
     });
     expect(
       mapServerChatEvent({
+        type: "run.completed",
+        data: { duration_ms: 61_000 },
+      }),
+    ).toEqual({ type: "completed", durationMs: 61_000 });
+    expect(
+      mapServerChatEvent({
         type: "run.failed",
         data: { message: "上游服务返回内部诊断" },
       }),

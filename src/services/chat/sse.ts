@@ -78,7 +78,10 @@ export function mapServerChatEvent(
                 durationMs: readOptionalNumber(data, ["duration_ms", "durationMs"]),
             };
         case "run.completed":
-            return { type: "completed" };
+            return {
+                type: "completed",
+                durationMs: readOptionalNumber(data, ["duration_ms", "durationMs"]),
+            };
         case "run.failed":
             return {
                 type: "failed",
