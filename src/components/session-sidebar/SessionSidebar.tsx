@@ -65,7 +65,7 @@ export function SessionSidebar({
         >
             <div className="session-sidebar-main">
                 <Title className="session-sidebar-brand" level={3}>
-                    同济同学
+                    同济同学 2.0
                 </Title>
                 <Button
                     aria-label="New Chat"

@@ -3,31 +3,151 @@
 /* tslint:disable */
 // @ts-nocheck
 
+export interface Ping200Response {
+  message: string;
+}
+
+export interface SessionHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface Session200ResponseSessionsItem {
+  /** session id */
+  id: string;
+  /** session 名 */
+  name: string;
+  /** 持久化类型，通常为 durable */
+  persistence: string;
+  /** 创建时间 */
+  created_at: string;
+  /** 最近 active 时间 */
+  last_active_at: string;
+}
+
+export interface Session200Response {
+  /** session 列表 */
+  sessions: Session200ResponseSessionsItem[];
+}
+
+export interface SessionMessagesQueryRequest {
+  /** 返回消息条数，取值范围 `1..100` */
+  limit?: number;
+}
+
+export interface SessionMessagesPathRequest {
+  /** 目标会话 ID */
+  session_id: string;
+}
+
+export interface SessionMessagesHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
+  /** 工具名 */
+  name: string;
+  /** 工具调用参数，为 json 字符串 */
+  arguments: string;
+}
+
+export interface SessionMessages200ResponseMessagesItemTool_callsItem {
+  /** 工具调用类型，例如：function_call */
+  type: string;
+  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
+  index: number;
+  id: string;
+}
+
+export interface SessionMessages200ResponseMessagesItem {
+  /** message_id */
+  id: string;
+  /** 多轮对话 response_id 缓存到期时间。仅 assistant message 存在 */
+  response_cache_expires_at?: number;
+  /** 工具调用 id。仅 tool message 存在 */
+  tool_call_id?: string;
+  /** 模型思考内容 */
+  reasoning_content?: string;
+  /** 模型 Responses API 所带 id，用于多轮对话缓存。仅 assistant message 存在 */
+  response_id?: string;
+  /** 当前 message 创建时间戳 */
+  created_at: string;
+  /** 当前 session_id */
+  session_id: string;
+  /** 本条 message 归属 run_id */
+  run_id: string;
+  /** message 的顺序编号，从 1 开始递增计数 */
+  sequence: number;
+  /** 角色：user、assistant、tool */
+  role: string;
+  /** message 内容 */
+  content: string;
+  /** 工具调用信息。仅 assistant message 存在 */
+  tool_calls?: SessionMessages200ResponseMessagesItemTool_callsItem[];
+  /** 工具名称。仅 tool message 存在 */
+  tool_name?: string;
+}
+
+export interface SessionMessages200Response {
+  messages: SessionMessages200ResponseMessagesItem[];
+}
+
+export interface TaskPlanPathRequest {
+  /** 目标会话 ID */
+  session_id: string;
+}
+
+export interface TaskPlanHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
+}
+
+export interface TaskPlan200ResponsePlanItemTasksItem {
+  /** 任务唯一 ID */
+  id: string;
+  /** 任务描述 */
+  desc: string;
+  /** 任务状态： pending 、 in_progress 、 done 、 failed */
+  status: string;
+}
+
+export interface TaskPlan200ResponsePlanItem {
+  /** 任务计划版本号，每次更新计划会递增 */
+  revision: number;
+  /** 任务列表 */
+  tasks: TaskPlan200ResponsePlanItemTasksItem[];
+  /** 计划最近更新时间 */
+  updated_at: string;
+  /** 当前 session_id */
+  session_id: string;
+}
+
+export interface TaskPlan200Response {
+  plan?: TaskPlan200ResponsePlanItem[];
+}
+
+export interface TaskPlan404Response {
+  error: string;
+}
+
 export interface TongjiOauth200Response {
   /** 302 跳转目标 URL，指向同济统一认证页面 */
   Location: string;
 }
 
-export interface Ping200Response {
-  message: string;
+export interface UserBasicInfoHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization?: string;
 }
 
-export interface TongjiOauthTokenBodyRequest {
-  /** 同济开放平台回调附带的授权码 */
-  code: string;
-  /** 授权阶段签发并回传的 state，用于防篡改校验 */
-  state: string;
-}
-
-export interface TongjiOauthToken200Response {
-  /** 当前浏览器会话使用的短期 Bearer token */
-  access_token: string;
-  /** Token 类型 */
-  token_type: string;
-  /** token 过期时间，单位秒 */
-  expires_in: number;
-  /** 当前 token 的 scope */
-  scope: string;
+export interface UserBasicInfo200Response {
+  /** 用户姓名 */
+  name: string;
+  /** 学（工）号 */
+  userId: string;
+  /** 用户类型，如本科生 */
+  userTypeName: string;
 }
 
 export interface SessionHeaderRequest {
@@ -77,67 +197,6 @@ export interface SessionMessages200Response {
   data: any;
 }
 
-export interface TaskPlanPathRequest {
-  /** 目标会话 ID */
-  session_id: string;
-}
-
-export interface TaskPlanHeaderRequest {
-  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
-  Authorization?: string;
-}
-
-export interface TaskPlan200ResponsePlanItemTasksItem {
-  /** 任务唯一 ID */
-  id: string;
-  /** 任务描述 */
-  desc: string;
-  /** 任务状态： pending 、 in_progress 、 done 、 failed */
-  status: string;
-}
-
-export interface TaskPlan200ResponsePlanItem {
-  /** 任务计划版本号，每次更新计划会递增 */
-  revision: number;
-  /** 任务列表 */
-  tasks: TaskPlan200ResponsePlanItemTasksItem[];
-  /** 计划最近更新时间 */
-  updated_at: string;
-  /** 当前 session_id */
-  session_id: string;
-}
-
-export interface TaskPlan200Response {
-  plan?: TaskPlan200ResponsePlanItem[];
-}
-
-export interface TaskPlan404Response {
-  error: string;
-}
-
-export interface SessionHeaderRequest {
-  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
-  Authorization?: string;
-}
-
-export interface Session200ResponseSessionsItem {
-  /** session id */
-  id: string;
-  /** session 名 */
-  name: string;
-  /** 持久化类型，通常为 durable */
-  persistence: string;
-  /** 创建时间 */
-  created_at: string;
-  /** 最近 active 时间 */
-  last_active_at: string;
-}
-
-export interface Session200Response {
-  /** session 列表 */
-  sessions: Session200ResponseSessionsItem[];
-}
-
 export interface SessionRenameHeaderRequest {
   /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
   Authorization?: string;
@@ -163,65 +222,20 @@ export interface SessionRename200Response {
   last_active_at: string;
 }
 
-export interface SessionMessagesQueryRequest {
-  /** 返回消息条数，取值范围 `1..100` */
-  limit?: number;
+export interface TongjiOauthTokenBodyRequest {
+  /** 同济开放平台回调附带的授权码 */
+  code: string;
+  /** 授权阶段签发并回传的 state，用于防篡改校验 */
+  state: string;
 }
 
-export interface SessionMessagesPathRequest {
-  /** 目标会话 ID */
-  session_id: string;
-}
-
-export interface SessionMessagesHeaderRequest {
-  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
-  Authorization?: string;
-}
-
-export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
-  /** 工具名 */
-  name: string;
-  /** 工具调用参数，为 json 字符串 */
-  arguments: string;
-}
-
-export interface SessionMessages200ResponseMessagesItemTool_callsItem {
-  index: number;
-  id: string;
-  /** 工具调用类型，例如：function_call */
-  type: string;
-  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
-}
-
-export interface SessionMessages200ResponseMessagesItem {
-  /** 模型思考内容 */
-  reasoning_content?: string;
-  /** 模型 Responses API 所带 id，用于多轮对话缓存。仅 assistant message 存在 */
-  response_id?: string;
-  /** 当前 message 创建时间戳 */
-  created_at: string;
-  /** message_id */
-  id: string;
-  /** 当前 session_id */
-  session_id: string;
-  /** 本条 message 归属 run_id */
-  run_id: string;
-  /** message 的顺序编号，从 1 开始递增计数 */
-  sequence: number;
-  /** 角色：user、assistant、tool */
-  role: string;
-  /** message 内容 */
-  content: string;
-  /** 工具调用信息。仅 assistant message 存在 */
-  tool_calls?: SessionMessages200ResponseMessagesItemTool_callsItem[];
-  /** 多轮对话 response_id 缓存到期时间。仅 assistant message 存在 */
-  response_cache_expires_at?: number;
-  /** 工具调用 id。仅 tool message 存在 */
-  tool_call_id?: string;
-  /** 工具名称。仅 tool message 存在 */
-  tool_name?: string;
-}
-
-export interface SessionMessages200Response {
-  messages: SessionMessages200ResponseMessagesItem[];
+export interface TongjiOauthToken200Response {
+  /** 当前浏览器会话使用的短期 Bearer token */
+  access_token: string;
+  /** Token 类型 */
+  token_type: string;
+  /** token 过期时间，单位秒 */
+  expires_in: number;
+  /** 当前 token 的 scope */
+  scope: string;
 }

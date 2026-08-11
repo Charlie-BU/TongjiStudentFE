@@ -4,14 +4,10 @@
 // @ts-nocheck
 
 import type {
-  TongjiOauth200Response,
   Ping200Response,
-  TongjiOauthTokenBodyRequest,
-  TongjiOauthToken200Response,
-  SessionBodyRequest,
   SessionHeaderRequest,
   Session200Response,
-  SessionMessagesBodyRequest,
+  SessionMessagesQueryRequest,
   SessionMessagesPathRequest,
   SessionMessagesHeaderRequest,
   SessionMessages200Response,
@@ -19,10 +15,16 @@ import type {
   TaskPlanHeaderRequest,
   TaskPlan200Response,
   TaskPlan404Response,
+  TongjiOauth200Response,
+  UserBasicInfoHeaderRequest,
+  UserBasicInfo200Response,
+  SessionBodyRequest,
+  SessionMessagesBodyRequest,
   SessionRenameBodyRequest,
   SessionRenameHeaderRequest,
   SessionRename200Response,
-  SessionMessagesQueryRequest,
+  TongjiOauthTokenBodyRequest,
+  TongjiOauthToken200Response,
 } from './namespaces';
 
 export default class TongjiStudentService<T> {
@@ -59,17 +61,6 @@ export default class TongjiStudentService<T> {
 
   /* API Services */
 
-  /** 创建签名 `state` 并重定向到同济统一认证页面，作为浏览器授权流程入口 */
-  TongjiOauthGET(req?: any, options?: T): Promise<TongjiOauth200Response> {
-    const _req = req || {};
-    let url = this.genBaseURL('/v1/tongji/oauth/authorize');
-    const method = 'GET';
-    const data = undefined;
-    const params = undefined;
-    const headers = undefined;
-    return this.request({ url, method, data, params, headers }, options);
-  }
-
   /** 健康检查 */
   PingGET(req?: any, options?: T): Promise<Ping200Response> {
     const _req = req || {};
@@ -81,17 +72,78 @@ export default class TongjiStudentService<T> {
     return this.request({ url, method, data, params, headers }, options);
   }
 
-  /** callback 页面提交 `code` 和 `state`，服务校验 state 后换取短期 Bearer access token */
-  TongjiOauthTokenPOST(
-    req: TongjiOauthTokenBodyRequest,
+  /** 根据有效 Bearer access token 返回当前用户的全部持久会话，按最近活跃时间倒序排列。匿名会话不在此列表中 */
+  SessionGET(
+    req: SessionHeaderRequest,
     options?: T,
-  ): Promise<TongjiOauthToken200Response> {
+  ): Promise<Session200Response> {
     const _req = req || {};
-    let url = this.genBaseURL('/v1/tongji/oauth/token');
-    const method = 'POST';
-    const data = { code: _req['code'], state: _req['state'] };
+    let url = this.genBaseURL('/v1/sessions');
+    const method = 'GET';
+    const data = undefined;
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 读取指定会话最近历史消息，结果按时间和消息序号从旧到新排列 */
+  SessionMessagesGET(
+    req: SessionMessagesQueryRequest &
+      SessionMessagesPathRequest &
+      SessionMessagesHeaderRequest,
+    options?: T,
+  ): Promise<SessionMessages200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions/{session_id}/messages');
+    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
+      url = url.replace('{session_id}', String(_req['session_id']));
+    }
+    const method = 'GET';
+    const data = undefined;
+    const params = { limit: _req['limit'] };
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 读取指定会话当前活动任务计划；认证会话按当前 `user_id` 校验归属，匿名会话按 `session_id` capability 校验。当前不存在活动计划时返回 `{"plan":null}` */
+  TaskPlanGET(
+    req: TaskPlanPathRequest & TaskPlanHeaderRequest,
+    options?: T,
+  ): Promise<TaskPlan200Response & TaskPlan404Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions/{session_id}/task-plan');
+    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
+      url = url.replace('{session_id}', String(_req['session_id']));
+    }
+    const method = 'GET';
+    const data = undefined;
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 创建签名 `state` 并重定向到同济统一认证页面，作为浏览器授权流程入口 */
+  TongjiOauthGET(req?: any, options?: T): Promise<TongjiOauth200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/tongji/oauth/authorize');
+    const method = 'GET';
+    const data = undefined;
     const params = undefined;
     const headers = undefined;
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 使用当前 Bearer access token 获取用户基础信息 */
+  UserBasicInfoGET(
+    req: UserBasicInfoHeaderRequest,
+    options?: T,
+  ): Promise<UserBasicInfo200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/tongji/user/basic-info');
+    const method = 'GET';
+    const data = undefined;
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
   }
 
@@ -128,37 +180,6 @@ export default class TongjiStudentService<T> {
     return this.request({ url, method, data, params, headers }, options);
   }
 
-  /** 读取指定会话当前活动任务计划；认证会话按当前 `user_id` 校验归属，匿名会话按 `session_id` capability 校验。当前不存在活动计划时返回 `{"plan":null}` */
-  TaskPlanGET(
-    req: TaskPlanPathRequest & TaskPlanHeaderRequest,
-    options?: T,
-  ): Promise<TaskPlan200Response & TaskPlan404Response> {
-    const _req = req || {};
-    let url = this.genBaseURL('/v1/sessions/{session_id}/task-plan');
-    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
-      url = url.replace('{session_id}', String(_req['session_id']));
-    }
-    const method = 'GET';
-    const data = undefined;
-    const params = undefined;
-    const headers = { Authorization: _req['Authorization'] };
-    return this.request({ url, method, data, params, headers }, options);
-  }
-
-  /** 根据有效 Bearer access token 返回当前用户的全部持久会话，按最近活跃时间倒序排列。匿名会话不在此列表中 */
-  SessionGET(
-    req: SessionHeaderRequest,
-    options?: T,
-  ): Promise<Session200Response> {
-    const _req = req || {};
-    let url = this.genBaseURL('/v1/sessions');
-    const method = 'GET';
-    const data = undefined;
-    const params = undefined;
-    const headers = { Authorization: _req['Authorization'] };
-    return this.request({ url, method, data, params, headers }, options);
-  }
-
   /** 修改当前用户拥有的持久会话名称 */
   SessionRenamePOST(
     req: SessionRenameBodyRequest & SessionRenameHeaderRequest,
@@ -173,22 +194,17 @@ export default class TongjiStudentService<T> {
     return this.request({ url, method, data, params, headers }, options);
   }
 
-  /** 读取指定会话最近历史消息，结果按时间和消息序号从旧到新排列 */
-  SessionMessagesGET(
-    req: SessionMessagesQueryRequest &
-      SessionMessagesPathRequest &
-      SessionMessagesHeaderRequest,
+  /** callback 页面提交 `code` 和 `state`，服务校验 state 后换取短期 Bearer access token */
+  TongjiOauthTokenPOST(
+    req: TongjiOauthTokenBodyRequest,
     options?: T,
-  ): Promise<SessionMessages200Response> {
+  ): Promise<TongjiOauthToken200Response> {
     const _req = req || {};
-    let url = this.genBaseURL('/v1/sessions/{session_id}/messages');
-    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
-      url = url.replace('{session_id}', String(_req['session_id']));
-    }
-    const method = 'GET';
-    const data = undefined;
-    const params = { limit: _req['limit'] };
-    const headers = { Authorization: _req['Authorization'] };
+    let url = this.genBaseURL('/v1/tongji/oauth/token');
+    const method = 'POST';
+    const data = { code: _req['code'], state: _req['state'] };
+    const params = undefined;
+    const headers = undefined;
     return this.request({ url, method, data, params, headers }, options);
   }
 }
