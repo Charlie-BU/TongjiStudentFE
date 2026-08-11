@@ -5,9 +5,28 @@ import {
     useState,
     type CSSProperties,
 } from "react";
-import { SearchOutlined } from "@ant-design/icons";
-import { Collapse, Typography } from "antd";
-import ReactMarkdown from "react-markdown";
+import { CheckOutlined, CodeOutlined, CopyOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Collapse, Typography } from "antd";
+import "katex/dist/katex.min.css";
+import ReactMarkdown, { type Components } from "react-markdown";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
+import css from "react-syntax-highlighter/dist/esm/languages/prism/css";
+import go from "react-syntax-highlighter/dist/esm/languages/prism/go";
+import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
+import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
+import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
+import markdown from "react-syntax-highlighter/dist/esm/languages/prism/markdown";
+import python from "react-syntax-highlighter/dist/esm/languages/prism/python";
+import sql from "react-syntax-highlighter/dist/esm/languages/prism/sql";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import tsx from "react-syntax-highlighter/dist/esm/languages/prism/tsx";
+import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
+import yaml from "react-syntax-highlighter/dist/esm/languages/prism/yaml";
+import rehypeKatex from "rehype-katex";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import {
     type ChatController,
     type ChatTurn,
@@ -16,6 +35,127 @@ import { ChatInput } from "../chat-input/ChatInput";
 import "./ChatArea.css";
 
 const { Text } = Typography;
+const markdownRemarkPlugins = [remarkGfm, remarkBreaks, remarkMath];
+const markdownRehypePlugins = [rehypeKatex];
+SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("css", css);
+SyntaxHighlighter.registerLanguage("go", go);
+SyntaxHighlighter.registerLanguage("java", java);
+SyntaxHighlighter.registerLanguage("javascript", javascript);
+SyntaxHighlighter.registerLanguage("js", javascript);
+SyntaxHighlighter.registerLanguage("json", json);
+SyntaxHighlighter.registerLanguage("markdown", markdown);
+SyntaxHighlighter.registerLanguage("md", markdown);
+SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("py", python);
+SyntaxHighlighter.registerLanguage("sql", sql);
+SyntaxHighlighter.registerLanguage("tsx", tsx);
+SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("ts", typescript);
+SyntaxHighlighter.registerLanguage("yaml", yaml);
+SyntaxHighlighter.registerLanguage("yml", yaml);
+const markdownComponents: Components = {
+    code({ children, className, node, ...props }) {
+        const language = /language-([\w-]+)/.exec(className ?? "")?.[1];
+        const isBlock = node?.position?.start.line !== node?.position?.end.line;
+
+        if (!isBlock) {
+            return (
+                <code className={className} {...props}>
+                    {children}
+                </code>
+            );
+        }
+
+        return <MarkdownCodeBlock code={String(children).replace(/\n$/, "")} language={language} />;
+    },
+    pre({ children }) {
+        return <>{children}</>;
+    },
+};
+
+function MarkdownCodeBlock({
+    code,
+    language,
+}: {
+    code: string;
+    language?: string;
+}) {
+    const [isCopied, setIsCopied] = useState(false);
+    const resetCopyStateRef = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        return () => window.clearTimeout(resetCopyStateRef.current);
+    }, []);
+
+    const copyCode = async (): Promise<void> => {
+        if (!navigator.clipboard) {
+            return;
+        }
+
+        await navigator.clipboard.writeText(code);
+        window.clearTimeout(resetCopyStateRef.current);
+        setIsCopied(true);
+        resetCopyStateRef.current = window.setTimeout(() => setIsCopied(false), 1600);
+    };
+
+    return (
+        <div className="markdown-code-wrapper">
+            <div className="markdown-code-header">
+                <span className="markdown-code-language">
+                    <CodeOutlined aria-hidden="true" />
+                    {formatCodeLanguage(language)}
+                </span>
+                <Button
+                    aria-label={isCopied ? "已复制代码" : "复制代码"}
+                    className="markdown-code-copy-button"
+                    icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
+                    onClick={() => void copyCode()}
+                    type="text"
+                />
+            </div>
+            <SyntaxHighlighter
+                className="markdown-code-block"
+                codeTagProps={{ className: "markdown-code-content" }}
+                customStyle={{
+                    background: "transparent",
+                    border: "none",
+                    margin: 0,
+                    padding: "20px",
+                }}
+                language={language ?? "text"}
+                PreTag="div"
+                style={oneLight}
+            >
+                {code}
+            </SyntaxHighlighter>
+        </div>
+    );
+}
+
+function formatCodeLanguage(language?: string): string {
+    const formattedLanguage = language?.charAt(0).toUpperCase() + language?.slice(1);
+    const labels: Record<string, string> = {
+        bash: "Bash",
+        css: "CSS",
+        go: "Go",
+        java: "Java",
+        javascript: "JavaScript",
+        js: "JavaScript",
+        json: "JSON",
+        markdown: "Markdown",
+        md: "Markdown",
+        python: "Python",
+        py: "Python",
+        sql: "SQL",
+        tsx: "TSX",
+        typescript: "TypeScript",
+        ts: "TypeScript",
+        yaml: "YAML",
+        yml: "YAML",
+    };
+    return formattedLanguage ? (labels[formattedLanguage.toLowerCase()] ?? formattedLanguage) : "Text";
+}
 
 type ChatAreaProps = {
     chat: ChatController;
@@ -104,9 +244,13 @@ export function ChatArea({ chat }: ChatAreaProps) {
                                     <div className="message assistant-message">
                                         {turn.answer ? (
                                             <div className="markdown-content">
-                                                <ReactMarkdown>
-                                                    {turn.answer}
-                                                </ReactMarkdown>
+                                            <ReactMarkdown
+                                                components={markdownComponents}
+                                                rehypePlugins={markdownRehypePlugins}
+                                                remarkPlugins={markdownRemarkPlugins}
+                                            >
+                                                {turn.answer}
+                                            </ReactMarkdown>
                                             </div>
                                         ) : null}
                                     </div>
@@ -152,7 +296,13 @@ function AgentActivity({
         <div className="activity-content">
             {turn.reasoning ? (
                 <div className="reasoning-block markdown-content">
-                    <ReactMarkdown>{turn.reasoning}</ReactMarkdown>
+                    <ReactMarkdown
+                        components={markdownComponents}
+                        rehypePlugins={markdownRehypePlugins}
+                        remarkPlugins={markdownRemarkPlugins}
+                    >
+                        {turn.reasoning}
+                    </ReactMarkdown>
                 </div>
             ) : null}
             {turn.activities.map((activity) => {

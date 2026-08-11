@@ -3,19 +3,28 @@ import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button, ConfigProvider } from "antd";
 import { SessionSidebar } from "./components/session-sidebar/SessionSidebar";
 import { TestAccessTokenControl } from "./components/test-access-token/TestAccessTokenControl";
+import { OauthCallback } from "./components/oauth-callback/OauthCallback";
 import { ChatArea } from "./components/chat-area/ChatArea";
 import { type CreatedSession, useChat } from "./hooks/use-chat";
 import { useSessionRoute } from "./hooks/use-session-route";
+import { tongjiStudentService } from "./services/tongji-student";
+import type { UserBasicInfo200Response } from "./cam-auto-generate/TongjiStudent/namespaces";
 
 const SIDEBAR_DEFAULT_WIDTH = 260;
 const SIDEBAR_MIN_WIDTH = 224;
 const SIDEBAR_MAX_WIDTH = 570;
+const TONGJI_ACCESS_TOKEN_KEY = "tongji-access-token";
 
-// App 负责全局 antd 主题和聊天区域装配。
 function App() {
+  return window.location.pathname === "/oauth/callback" ? <OauthCallback /> : <ChatApp />;
+}
+
+// ChatApp 负责常规页面的全局 antd 主题和聊天区域装配。
+function ChatApp() {
   const { openNewChat, openSession, sessionId } = useSessionRoute();
   const [createdSessions, setCreatedSessions] = useState<CreatedSession[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [userBasicInfo, setUserBasicInfo] = useState<UserBasicInfo200Response | null>(null);
   const handleSessionCreated = useCallback(async (session: CreatedSession): Promise<void> => {
     setCreatedSessions((currentSessions) => [
       session,
@@ -47,6 +56,40 @@ function App() {
 
     startNewChat();
   }, [chat.activeSessionId, restoreSession, sessionId, startNewChat]);
+
+  useEffect(() => {
+    let isActive = true;
+    const clearAccessToken = (): void => {
+      window.localStorage.removeItem(TONGJI_ACCESS_TOKEN_KEY);
+    };
+
+    void tongjiStudentService
+      .UserBasicInfoGET({})
+      .then((user) => {
+        if (!isActive) {
+          return;
+        }
+
+        if (user) {
+          setUserBasicInfo(user);
+          return;
+        }
+
+        setUserBasicInfo(null);
+      })
+      .catch((error: unknown) => {
+        if (isActive) {
+          if (getResponseStatus(error) === 401) {
+            clearAccessToken();
+          }
+          setUserBasicInfo(null);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const constrainSidebarWidth = (): void => {
@@ -116,6 +159,7 @@ function App() {
           onNewChat={handleNewChat}
           onSessionSelect={handleSessionSelect}
           selectedSessionId={sessionId}
+          userBasicInfo={userBasicInfo}
         />
         {isMobileSidebarOpen ? (
           <div
@@ -145,6 +189,20 @@ function App() {
       {import.meta.env.TEST_ENV === "true" ? <TestAccessTokenControl /> : null}
     </ConfigProvider>
   );
+}
+
+function getResponseStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) {
+    return undefined;
+  }
+
+  const response = (error as { response?: unknown }).response;
+  if (typeof response !== "object" || response === null) {
+    return undefined;
+  }
+
+  const status = (response as { status?: unknown }).status;
+  return typeof status === "number" ? status : undefined;
 }
 
 export default App;

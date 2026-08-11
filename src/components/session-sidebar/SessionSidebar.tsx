@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { EditOutlined, LoadingOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Typography } from "antd";
+import { EditOutlined, LoadingOutlined, LogoutOutlined, SwapOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Typography, type MenuProps } from "antd";
 import { tongjiStudentService } from "../../services/tongji-student";
 import type { CreatedSession } from "../../hooks/use-chat";
 import "./SessionSidebar.css";
+import type { UserBasicInfo200Response } from "../../cam-auto-generate/TongjiStudent/namespaces";
 
 const { Text, Title } = Typography;
 
 type SessionSummary = CreatedSession;
+const TONGJI_OAUTH_AUTHORIZE_PATH = "/v1/tongji/oauth/authorize";
 
 type SessionSidebarProps = {
     createdSessions: SessionSummary[];
@@ -15,6 +17,9 @@ type SessionSidebarProps = {
     onNewChat: () => void;
     onSessionSelect: (sessionId: string) => void;
     selectedSessionId: string | null;
+    userBasicInfo?: UserBasicInfo200Response | null;
+    onOauthRedirect?: (url: string) => void;
+    onPageReload?: () => void;
 };
 
 // SessionSidebar 展示当前用户最近活跃的持久会话。
@@ -24,10 +29,35 @@ export function SessionSidebar({
     onNewChat,
     onSessionSelect,
     selectedSessionId,
+    userBasicInfo = null,
+    onOauthRedirect = (url) => window.location.assign(url),
+    onPageReload = () => window.location.reload(),
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const displayedSessions = mergeSessions([...createdSessions, ...sessions]);
+    const startOauth = (): void => {
+        onOauthRedirect(getTongjiOauthAuthorizeUrl());
+    };
+    const logout = (): void => {
+        window.localStorage.removeItem("tongji-access-token");
+        onPageReload();
+    };
+    const userMenuItems: MenuProps["items"] = [
+        {
+            icon: <SwapOutlined />,
+            key: "switch-user",
+            label: "切换用户",
+            onClick: startOauth,
+        },
+        {
+            danger: true,
+            icon: <LogoutOutlined />,
+            key: "logout",
+            label: "退出登录",
+            onClick: logout,
+        },
+    ];
 
     useEffect(() => {
         let isActive = true;
@@ -117,10 +147,46 @@ export function SessionSidebar({
             </div>
 
             <div className="session-sidebar-profile">
-                <UserOutlined style={{ fontSize: 14 }} />
-                <Text strong>User</Text>
+                {userBasicInfo ? (
+                    <Dropdown menu={{ items: userMenuItems }} placement="topLeft" trigger={["hover", "click"]}>
+                        <button aria-label="用户菜单" className="session-sidebar-profile-trigger" type="button">
+                            <UserOutlined style={{ fontSize: 14 }} />
+                            <ProfileInfo userBasicInfo={userBasicInfo} />
+                        </button>
+                    </Dropdown>
+                ) : (
+                    <button
+                        aria-label="同济统一身份认证"
+                        className="session-sidebar-profile-trigger"
+                        onClick={startOauth}
+                        type="button"
+                    >
+                        <UserOutlined style={{ fontSize: 14 }} />
+                        <ProfileInfo />
+                    </button>
+                )}
             </div>
         </aside>
+    );
+}
+
+function getTongjiOauthAuthorizeUrl(): string {
+    const baseURL = (import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? "").replace(/\/+$/, "");
+    return `${baseURL}${TONGJI_OAUTH_AUTHORIZE_PATH}`;
+}
+
+function ProfileInfo({ userBasicInfo }: { userBasicInfo?: UserBasicInfo200Response }) {
+    return (
+        <span className="session-sidebar-profile-info">
+            <Text className="session-sidebar-profile-name" strong>
+                {userBasicInfo?.name ?? "同济统一身份认证"}
+            </Text>
+            {userBasicInfo ? (
+                <Text className="session-sidebar-profile-meta" type="secondary">
+                    {userBasicInfo.userId} · {userBasicInfo.userTypeName}
+                </Text>
+            ) : null}
+        </span>
     );
 }
 

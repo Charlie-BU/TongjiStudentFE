@@ -7,11 +7,13 @@ const tongjiStudentService = vi.hoisted(() => ({
   SessionMessagesGET: vi.fn(),
   SessionMessagesPOST: vi.fn(),
   SessionPOST: vi.fn(),
+  UserBasicInfoGET: vi.fn(),
 }));
 
 vi.mock("../../src/services/tongji-student", () => ({ tongjiStudentService }));
 
 import App from "../../src/App";
+import { TestAccessTokenControl } from "../../src/components/test-access-token/TestAccessTokenControl";
 
 describe("App", () => {
   beforeEach(() => {
@@ -21,6 +23,11 @@ describe("App", () => {
     tongjiStudentService.SessionPOST.mockResolvedValue({
       persistence: "durable",
       session_id: "new-session-1",
+    });
+    tongjiStudentService.UserBasicInfoGET.mockResolvedValue({
+      name: "测试同学",
+      userId: "test-student-001",
+      userTypeName: "本科生",
     });
   });
 
@@ -36,15 +43,54 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "发送问题" })).toBeDisabled();
   });
 
-  it("应在测试环境保存手动输入的 Tongji Access Token", async () => {
-    const user = userEvent.setup();
+  it("应在页面挂载时获取并展示用户基础信息", async () => {
     render(<App />);
+
+    expect(await screen.findByText("测试同学")).toBeInTheDocument();
+    expect(screen.getByText("test-student-001 · 本科生")).toBeInTheDocument();
+    expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
+  });
+
+  it("应在用户信息请求的非认证失败时保留 Access Token", async () => {
+    window.localStorage.setItem("tongji-access-token", "test-access-token");
+    tongjiStudentService.UserBasicInfoGET.mockRejectedValueOnce(new Error("network failure"));
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
+    });
+    expect(window.localStorage.getItem("tongji-access-token")).toBe("test-access-token");
+  });
+
+  it("应仅在用户信息请求明确返回 401 时清除 Access Token", async () => {
+    window.localStorage.setItem("tongji-access-token", "test-access-token");
+    tongjiStudentService.UserBasicInfoGET.mockRejectedValueOnce({ response: { status: 401 } });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("tongji-access-token")).toBeNull();
+    });
+  });
+
+  it("应在测试环境显示手动配置 Tongji Access Token 的入口", () => {
+    render(<App />);
+
+    expect(screen.getByRole("button", { name: "配置测试 Tongji Access Token" })).toBeInTheDocument();
+  });
+
+  it("应保存手动输入的 Tongji Access Token 后刷新页面", async () => {
+    const user = userEvent.setup();
+    const onSaved = vi.fn();
+    render(<TestAccessTokenControl onSaved={onSaved} />);
 
     await user.click(screen.getByRole("button", { name: "配置测试 Tongji Access Token" }));
     await user.type(screen.getByLabelText("输入 Tongji Access Token"), "test-access-token");
     await user.click(screen.getByRole("button", { name: /保\s*存/ }));
 
     expect(window.localStorage.getItem("tongji-access-token")).toBe("test-access-token");
+    expect(onSaved).toHaveBeenCalledOnce();
   });
 
   it("应支持拖拽测试 Token 按钮且不触发弹窗", () => {

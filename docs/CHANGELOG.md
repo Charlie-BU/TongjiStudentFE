@@ -1,3 +1,53 @@
+## CHANGELOG - 2026-08-11 15:04 - 接入同济 OAuth 登录并增强 Markdown 回答渲染
+
+### 撰写时间
+
+- 2026-08-11 15:04
+
+### Base Commit
+
+- 9792e8f47d4676e5fc850f946d0b2f0f00aaf9f8
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+前一次更新已经让前端能读取本地保存的 Bearer token，但用户仍需要手工配置测试凭据，认证会话无法从页面自然建立。本次把登录入口、OAuth 回调、Token 保存和用户信息展示串成一条浏览器侧链路，同时保留 `401` 才清除 Token 的边界，避免临时网络错误把可用登录态误判为失效。
+
+聊天内容此前只能呈现基础 Markdown。回答中出现表格、任务列表、公式或代码片段时，结构信息和可读性不足。因此本次为回答和推理区接入 GFM、数学公式、单换行与有限语言集的语法高亮，并为代码块补上复制交互。
+
+### 改动概览
+
+- `App` 按 `/oauth/callback` 分流到 `OauthCallback`；常规聊天页在挂载时通过 `UserBasicInfoGET` 获取用户基础信息，并将结果传给 `SessionSidebar`。
+- 新增 `OauthCallback`：读取并清理 URL 中的 `code`、`state`，调用 `TongjiOauthTokenPOST` 换取 `access_token`，保存至 `localStorage["tongji-access-token"]` 后返回首页；相同授权码在 React `StrictMode` 下复用进行中的请求，避免重复兑换。
+- `SessionSidebar` 在未登录时跳转 `/v1/tongji/oauth/authorize`；登录后展示姓名、学号和用户类型，并提供切换用户与退出登录菜单。`TestAccessTokenControl` 保存测试 Token 后改为刷新页面，使用户信息重新拉取。
+- 新增 `remark-gfm`、`remark-breaks`、`remark-math`、`rehype-katex`、`katex` 和 `react-syntax-highlighter`，为回答及推理内容提供表格、任务列表、链接、公式、代码高亮与复制按钮；CSS 同步补齐窄容器、表格、公式横向滚动和代码块样式。
+- 补充 OAuth 回调、用户信息读取、登录/退出菜单及扩展 Markdown 的组件测试，并更新锁文件。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：CAM 生成客户端已提供 `TongjiOauthTokenPOST` 与 `UserBasicInfoGET`，而 `tongjiStudentService` 会从同一 `localStorage` 键注入 `Authorization`。侧栏使用 `VITE_TONGJI_STUDENT_BASE_URL` 组装认证入口，开发环境可继续经 `/api` 代理访问服务端。
+- 当前改动：授权平台回跳到 `/oauth/callback?code=...&state=...` 后，`OauthCallback` 先以 `history.replaceState` 移除敏感查询参数，再以 `code/state` 换取 Token。`ChatApp` 后续请求用户资料；只有服务端明确返回 `401` 才移除本地 Token。Markdown 则通过共享的 `markdownComponents` 同时作用于回答与推理内容，块级代码交给 `PrismLight` 渲染，行内代码保持原生 `<code>`。
+- 下游影响：获得 Token 后，既有会话列表、历史恢复和 SSE 请求都会由服务适配器自动携带 Bearer 头，调用接口无需改签名。侧栏能据用户资料转换为登录菜单；无资料时仍可发起认证。渲染层只消费既有 `ChatTurn.answer` 与 `ChatTurn.reasoning`，不影响 SSE 事件模型。
+
+### 改动结果与业务影响
+
+浏览器侧已经具备从授权入口到持久化访问 Token、展示身份和退出登录的完整交互；Token 失效与短暂请求失败被区分处理。聊天回答可表达更完整的 Markdown 语义，代码块可识别常用语言并复制文本。
+
+已执行 `git diff --check`，未发现空白字符错误。`pnpm test` 共运行 7 个测试文件、32 个用例，其中 31 项通过；OAuth 回调的成功、缺参、失败和 `StrictMode` 去重场景均已覆盖。
+
+### 风险与待办
+
+- `test/components/session-sidebar.test.tsx` 有 1 项失败：用例查询 `aria-label="同济统一身份认证登录"`，实现提供的是 `aria-label="同济统一身份认证"`。这会阻断完整测试通过；需统一实现与测试的无障碍名称后重新执行 `pnpm test`，再补跑 `pnpm check`。
+- Access Token 仍存于 `localStorage`，应保持短期、低权限，并在生产安全评审中评估 XSS 暴露边界与替代存储方案。
+- 未识别的 fenced code 语言会按 `text` 处理；当前没有动态加载语法包，后续若扩展语言集合，需要兼顾首屏包体积。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(auth): add OAuth login and rich Markdown rendering`
+
 ## CHANGELOG - 2026-08-11 00:32 - 添加测试 Token 配置入口与请求鉴权注入
 
 ### 撰写时间

@@ -5,8 +5,16 @@ import "./TestAccessTokenControl.css";
 
 const TONGJI_ACCESS_TOKEN_KEY = "tongji-access-token";
 
+type TestAccessTokenControlProps = {
+  onSaved?: () => void;
+};
+
+function reloadPage(): void {
+  window.location.reload();
+}
+
 // TestAccessTokenControl 仅在测试环境提供手动设置同济 Access Token 的入口。
-export function TestAccessTokenControl() {
+export function TestAccessTokenControl({ onSaved = reloadPage }: TestAccessTokenControlProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [token, setToken] = useState("");
   const [position, setPosition] = useState<CSSProperties>();
@@ -25,7 +33,7 @@ export function TestAccessTokenControl() {
 
   const saveToken = (): void => {
     window.localStorage.setItem(TONGJI_ACCESS_TOKEN_KEY, token.trim());
-    setIsOpen(false);
+    onSaved();
   };
 
   const startDrag = (event: PointerEvent<HTMLButtonElement>): void => {

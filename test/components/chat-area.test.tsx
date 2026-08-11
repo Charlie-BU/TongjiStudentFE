@@ -54,7 +54,10 @@ describe("ChatArea", () => {
     const user = userEvent.setup();
     mockSseEvents([
       { type: "reasoning", text: "## 检索计划" },
-      { type: "delta", text: "## 报到材料\n\n- 录取通知书" },
+      {
+        type: "delta",
+        text: "## 报到材料\n\n| 项目 | 内容 |\n| --- | --- |\n| 材料 | 录取通知书 |",
+      },
       { type: "completed" },
     ]);
 
@@ -66,12 +69,68 @@ describe("ChatArea", () => {
     expect(
       await screen.findByRole("heading", { name: "报到材料", level: 2 }),
     ).toBeInTheDocument();
-    expect(screen.getByText("录取通知书")).toBeInTheDocument();
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "录取通知书" })).toBeInTheDocument();
 
     await user.click(screen.getByText(/已工作/));
     expect(
       screen.getByRole("heading", { name: "检索计划", level: 2 }),
     ).toBeInTheDocument();
+  });
+
+  it("应支持 GFM 扩展、单换行与数学公式", async () => {
+    const user = userEvent.setup();
+    mockSseEvents([
+      {
+        type: "delta",
+        text: "~~已完成~~\n- [x] 校验通过\n访问 https://example.com\n公式 $E=mc^2$",
+      },
+      { type: "completed" },
+    ]);
+
+    const { container } = render(<ChatAreaHarness />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "测试扩展语法");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    expect((await screen.findByText("已完成")).closest("del")).not.toBeNull();
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByRole("link", { name: "https://example.com" })).toHaveAttribute(
+      "href",
+      "https://example.com",
+    );
+    expect(container.querySelector(".katex")).not.toBeNull();
+    expect(container.querySelector(".markdown-content br")).not.toBeNull();
+  });
+
+  it("应使用语法高亮器渲染代码块，同时保留行内代码", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    mockSseEvents([
+      {
+        type: "delta",
+        text: "行内 `session_id`。\n\n```ts\nconst sessionId = 'session-1';\n```",
+      },
+      { type: "completed" },
+    ]);
+
+    const { container } = render(<ChatAreaHarness />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "测试代码块");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    expect(await screen.findByText("session_id")).toBeInTheDocument();
+    expect(container.querySelector(".markdown-code-block")).toHaveTextContent(
+      "const sessionId = 'session-1';",
+    );
+    expect(screen.getByText("TypeScript")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "复制代码" }));
+    expect(writeText).toHaveBeenCalledWith("const sessionId = 'session-1';");
+    expect(screen.getByRole("button", { name: "已复制代码" })).toBeInTheDocument();
   });
 
   it("应在发送和流式更新时滚动到输入框上方的对话末尾", async () => {

@@ -77,10 +77,44 @@
 }
 
 .session-sidebar-profile {
+  min-width: 0;
+}
+
+.session-sidebar-profile-trigger {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 16px;
   padding: 8px;
+  color: var(--ant-color-text);
+  border: 0;
+  border-radius: var(--ant-border-radius);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.session-sidebar-profile-trigger:hover {
+  background: var(--ant-color-fill-secondary);
+}
+
+.session-sidebar-profile-info {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.session-sidebar-profile-name.ant-typography {
+  color: var(--ant-color-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.session-sidebar-profile-meta.ant-typography {
+  color: var(--ant-color-text-tertiary);
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .session-sidebar-profile .ant-avatar {
