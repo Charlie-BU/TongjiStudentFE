@@ -134,7 +134,10 @@ function MarkdownCodeBlock({
 }
 
 function formatCodeLanguage(language?: string): string {
-    const formattedLanguage = language?.charAt(0).toUpperCase() + language?.slice(1);
+    let formattedLanguage = (language?.charAt(0).toUpperCase() ?? "") + (language?.slice(1) ?? "");
+    if (formattedLanguage === "") {
+        formattedLanguage = language ?? "";
+    }
     const labels: Record<string, string> = {
         bash: "Bash",
         css: "CSS",
