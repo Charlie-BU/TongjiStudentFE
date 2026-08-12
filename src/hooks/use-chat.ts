@@ -45,10 +45,14 @@ export type CreatedSession = {
 
 type UseChatOptions = {
     onSessionCreated?: (session: CreatedSession) => void | Promise<void>;
+    onSessionRestoreFailed?: () => void;
 };
 
 // useChat 收敛会话创建、SSE 消费、停止和聊天状态，页面组件仅负责渲染。
-export function useChat({ onSessionCreated }: UseChatOptions = {}) {
+export function useChat({
+    onSessionCreated,
+    onSessionRestoreFailed,
+}: UseChatOptions = {}) {
     const [input, setInput] = useState("");
     const [turns, setTurns] = useState<ChatTurn[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
@@ -209,9 +213,10 @@ export function useChat({ onSessionCreated }: UseChatOptions = {}) {
         } catch {
             if (restoreSequenceRef.current === restoreSequence) {
                 setTurns([]);
+                onSessionRestoreFailed?.();
             }
         }
-    }, []);
+    }, [onSessionRestoreFailed]);
 
     async function getOrCreateSessionId(): Promise<string> {
         if (sessionIdRef.current) {

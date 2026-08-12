@@ -10,6 +10,12 @@ vi.mock("../../src/services/tongji-student", () => ({ tongjiStudentService }));
 
 import { SessionSidebar } from "../../src/components/session-sidebar/SessionSidebar";
 
+const userBasicInfo = {
+  name: "测试同学",
+  userId: "test-student-001",
+  userTypeName: "本科生",
+};
+
 describe("SessionSidebar", () => {
   beforeEach(() => {
     tongjiStudentService.SessionGET.mockReset();
@@ -23,7 +29,7 @@ describe("SessionSidebar", () => {
       ],
     });
 
-    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} />);
+    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
     await screen.findByText("最新会话");
     const sessions = screen.getAllByText(/会话/);
@@ -39,7 +45,7 @@ describe("SessionSidebar", () => {
     const onNewChat = vi.fn();
     tongjiStudentService.SessionGET.mockResolvedValue({ sessions: [] });
 
-    render(<SessionSidebar createdSessions={[]} onNewChat={onNewChat} onSessionSelect={vi.fn()} selectedSessionId={null} />);
+    render(<SessionSidebar createdSessions={[]} onNewChat={onNewChat} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
     await user.click(screen.getByRole("button", { name: "New Chat" }));
     expect(onNewChat).toHaveBeenCalledOnce();
@@ -54,7 +60,7 @@ describe("SessionSidebar", () => {
       ],
     });
 
-    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={onSessionSelect} selectedSessionId={null} />);
+    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={onSessionSelect} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
     await user.click(await screen.findByRole("button", { name: "校园卡咨询" }));
     expect(onSessionSelect).toHaveBeenCalledWith("session-2");
@@ -77,6 +83,7 @@ describe("SessionSidebar", () => {
 
     await user.click(screen.getByRole("button", { name: "同济统一身份认证登录" }));
     expect(onOauthRedirect).toHaveBeenCalledWith("/api/v1/tongji/oauth/authorize");
+    expect(tongjiStudentService.SessionGET).not.toHaveBeenCalled();
   });
 
   it("应向上展示用户菜单并支持切换用户和退出登录", async () => {

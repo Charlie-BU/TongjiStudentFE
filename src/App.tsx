@@ -25,6 +25,9 @@ function ChatApp() {
   const [createdSessions, setCreatedSessions] = useState<CreatedSession[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userBasicInfo, setUserBasicInfo] = useState<UserBasicInfo200Response | null>(null);
+  const handleSessionRestoreFailed = useCallback((): void => {
+    openNewChat();
+  }, [openNewChat]);
   const handleSessionCreated = useCallback(async (session: CreatedSession): Promise<void> => {
     setCreatedSessions((currentSessions) => [
       session,
@@ -33,7 +36,10 @@ function ChatApp() {
     openSession(session.id);
     await Promise.resolve();
   }, [openSession]);
-  const chat = useChat({ onSessionCreated: handleSessionCreated });
+  const chat = useChat({
+    onSessionCreated: handleSessionCreated,
+    onSessionRestoreFailed: handleSessionRestoreFailed,
+  });
   const { restoreSession, startNewChat } = chat;
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const handleNewChat = useCallback((): void => {
@@ -79,7 +85,7 @@ function ChatApp() {
       })
       .catch((error: unknown) => {
         if (isActive) {
-          if (getResponseStatus(error) === 401) {
+          if (getResponseStatus(error) === 401 || getResponseStatus(error) === 502) {
             clearAccessToken();
           }
           setUserBasicInfo(null);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EditOutlined, LoadingOutlined, LogoutOutlined, SwapOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Typography, type MenuProps } from "antd";
+import { Button, Dropdown, Image, Typography, type MenuProps } from "antd";
+import tongjiLogo from "../../assets/tongji.svg";
 import { tongjiStudentService } from "../../services/tongji-student";
 import type { CreatedSession } from "../../hooks/use-chat";
 import "./SessionSidebar.css";
@@ -36,6 +37,7 @@ export function SessionSidebar({
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const displayedSessions = mergeSessions([...createdSessions, ...sessions]);
+    const isSessionListLoading = userBasicInfo !== null && isLoading;
     const startOauth = (): void => {
         onOauthRedirect(getTongjiOauthAuthorizeUrl());
     };
@@ -60,6 +62,10 @@ export function SessionSidebar({
     ];
 
     useEffect(() => {
+        if (!userBasicInfo) {
+            return;
+        }
+
         let isActive = true;
 
         void tongjiStudentService
@@ -84,7 +90,7 @@ export function SessionSidebar({
         return () => {
             isActive = false;
         };
-    }, []);
+    }, [userBasicInfo]);
 
     return (
         <aside
@@ -95,6 +101,14 @@ export function SessionSidebar({
         >
             <div className="session-sidebar-main">
                 <Title className="session-sidebar-brand" level={3}>
+                    <Image
+                        alt="同济大学"
+                        className="session-sidebar-brand-logo"
+                        preview={false}
+                        src={tongjiLogo}
+                        width={30}
+                        height={30}
+                    />
                     同济同学 2.0
                 </Title>
                 <Button
@@ -116,7 +130,7 @@ export function SessionSidebar({
                         Recents
                     </Text>
                     <div className="session-list">
-                        {isLoading ? (
+                        {isSessionListLoading ? (
                             <div
                                 aria-label="正在加载会话"
                                 className="session-list-loading"
@@ -124,7 +138,7 @@ export function SessionSidebar({
                             >
                                 <LoadingOutlined />
                             </div>
-                        ) : (
+                        ) : userBasicInfo ? (
                             displayedSessions.map((session) => (
                                 <Button
                                     block
@@ -141,7 +155,7 @@ export function SessionSidebar({
                                     <Text ellipsis strong>{session.name}</Text>
                                 </Button>
                             ))
-                        )}
+                        ) : null}
                     </div>
                 </section>
             </div>
@@ -156,7 +170,7 @@ export function SessionSidebar({
                     </Dropdown>
                 ) : (
                     <button
-                        aria-label="同济统一身份认证"
+                        aria-label="同济统一身份认证登录"
                         className="session-sidebar-profile-trigger"
                         onClick={startOauth}
                         type="button"

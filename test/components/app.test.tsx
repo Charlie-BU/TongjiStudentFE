@@ -151,6 +151,17 @@ describe("App", () => {
     });
   });
 
+  it("应在会话消息恢复失败时回到主页", async () => {
+    window.history.replaceState(null, "", "/session/session-1");
+    tongjiStudentService.SessionMessagesGET.mockRejectedValueOnce(new Error("not found"));
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe("/");
+    });
+  });
+
   it("应在新建聊天后忽略尚未完成的会话恢复", async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, "", "/session/session-1");
