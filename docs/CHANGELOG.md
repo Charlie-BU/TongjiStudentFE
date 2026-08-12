@@ -1,3 +1,52 @@
+## CHANGELOG - 2026-08-12 19:42 - 支持匿名会话本地保存与侧栏恢复
+
+### 撰写时间
+
+- 2026-08-12 19:42
+
+### Base Commit
+
+- 63202b770d645bd2a59f3e29d913d61fa3088c0a
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+认证用户的会话由服务端列表提供，但未登录用户创建的临时会话没有可恢复的本地索引。页面刷新或重新进入聊天页后，侧栏无法获知这些 session；同时，同一个匿名会话继续发送消息时，最近活跃顺序也需要跟随对话推进。
+
+因此本次把匿名 session 的摘要信息落到浏览器 `localStorage`，并使侧栏在未取得用户资料时读取该本地来源。重点是保留既有认证用户的服务端会话路径，而不改变 CAM 客户端或 SSE 请求的调用契约。
+
+### 改动概览
+
+- 新增 `src/utils/anonymous-session.ts`，以 `anonymous-sessions` 为键保存、读取、清理和按 `lastActiveAt` 排序匿名会话摘要。
+- `App.handleSessionCreated` 接收 `isAnonymous` 标记；匿名会话创建后同时写入本地存储、页面内 `createdSessions` 和会话路由。
+- `useChat` 将 `CreatedSession` 收敛为 `SessionSummary`，创建会话时透传匿名标记；复用既有匿名 `session_id` 发送后会更新本地 `lastActiveAt`，避免排序停留在首次创建时间。
+- `SessionSidebar` 未登录时读取本地匿名会话，并在非加载状态统一渲染合并后的会话列表，因此新建匿名会话和刷新后恢复的会话都能进入左侧 `Recents`。
+- 新增匿名存储与 Hook 回归测试，覆盖本地排序、更新时间和复用匿名会话的第二轮发送。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`ChatArea` 仍经 `useChat.submitQuestion` 创建或复用 session；`App` 通过 `UserBasicInfoGET` 的结果判定当前会话是否匿名。认证用户仍由 `SessionSidebar` 调用 `SessionGET` 获取服务端列表。
+- 当前改动：首次匿名创建时，`useChat.getOrCreateSessionId` 调用 `onSessionCreated(session, true)`；`App` 使用 `addAnonymousSession` 持久化摘要，并将 session 写入 React state、跳转 `/session/:id`。后续发消息命中 `sessionIdRef` 时调用 `updateAnonymousSessionLastActiveAt`；侧栏在匿名分支读取相同存储键，再与当前 state 合并去重、按活跃时间排序。
+- 下游影响：路由、SSE 消息提交和认证用户会话列表仍使用原 session id 与服务调用。侧栏现在不再因 `userBasicInfo` 为空而省略 `displayedSessions` 的渲染，匿名和认证两种数据源共用同一展示组件。
+
+### 改动结果与业务影响
+
+匿名会话已可在当前页面即时显示，并可在刷新后的未登录状态从本地恢复到侧栏；继续对话会刷新活跃时间，排序能反映最近使用的会话。`pnpm test` 已通过 8 个测试文件、36 个用例，`pnpm test:typecheck`、`pnpm build` 和 `git diff --check --cached` 通过。
+
+### 风险与待办
+
+- 匿名会话索引仅保存在当前浏览器的 `localStorage`。清除站点数据、使用无痕窗口或切换设备后无法恢复；这符合匿名会话的本地边界，但应在产品说明中明确。
+- `anonymous-session.ts` 当前直接 `JSON.parse` 本地值。若用户手动篡改或旧版本遗留了非法 JSON，读取会抛错并影响侧栏渲染；后续应增加容错解析与结构校验。
+- `pnpm lint` 当前仍未通过：`App.tsx` 的冗余 `Boolean` 调用，以及 `SessionSidebar` 在 effect 中同步设置本地会话 state，分别触发 `no-extra-boolean-cast` 和 `react-hooks/set-state-in-effect`。这些问题不影响本次测试与构建结论，但合并前仍需修复。
+- Vite 继续提示主 JavaScript bundle 超过 500 kB；本次没有调整拆包策略。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): persist anonymous sessions locally`
+
 ## CHANGELOG - 2026-08-11 15:04 - 接入同济 OAuth 登录并增强 Markdown 回答渲染
 
 ### 撰写时间

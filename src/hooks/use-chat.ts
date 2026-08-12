@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { AxiosProgressEvent, AxiosRequestConfig } from "axios";
 import { tongjiStudentService } from "../services/tongji-student";
+import { updateAnonymousSessionLastActiveAt } from "../utils/anonymous-session";
 
 export type ChatActivity = {
     id: string;
@@ -37,19 +38,24 @@ type ServerEvent = {
     seq?: number;
 };
 
-export type CreatedSession = {
+export type SessionSummary = {
     id: string;
     lastActiveAt: string;
     name: string;
 };
 
 type UseChatOptions = {
-    onSessionCreated?: (session: CreatedSession) => void | Promise<void>;
+    isAnonymous?: boolean;
+    onSessionCreated?: (
+        session: SessionSummary,
+        isAnonymous?: boolean,
+    ) => void | Promise<void>;
     onSessionRestoreFailed?: () => void;
 };
 
 // useChat 收敛会话创建、SSE 消费、停止和聊天状态，页面组件仅负责渲染。
 export function useChat({
+    isAnonymous = false,
     onSessionCreated,
     onSessionRestoreFailed,
 }: UseChatOptions = {}) {
@@ -89,7 +95,8 @@ export function useChat({
         ]);
 
         try {
-            const sessionId = await getOrCreateSessionId();
+            const sessionId = await getOrCreateSessionId(isAnonymous);
+
             let responseTextLength = 0;
             let sseBuffer = "";
             let lastSequence = 0;
@@ -155,11 +162,14 @@ export function useChat({
                     turn.id === turnId
                         ? {
                               ...turn,
-                              error: controller.signal.aborted || isAbortError(error)
-                                  ? undefined
-                                  : "生成失败，请稍后重试。",
+                              error:
+                                  controller.signal.aborted ||
+                                  isAbortError(error)
+                                      ? undefined
+                                      : "生成失败，请稍后重试。",
                               state:
-                                  controller.signal.aborted || isAbortError(error)
+                                  controller.signal.aborted ||
+                                  isAbortError(error)
                                       ? "aborted"
                                       : "failed",
                           }
@@ -187,50 +197,66 @@ export function useChat({
         setTurns([]);
     }, []);
 
-    const restoreSession = useCallback(async (sessionId: string): Promise<void> => {
-        const restoreSequence = restoreSequenceRef.current + 1;
-        restoreSequenceRef.current = restoreSequence;
-        abortControllerRef.current?.abort();
-        abortControllerRef.current = null;
-        sessionIdRef.current = sessionId;
-        setActiveSessionId(sessionId);
-        setInput("");
-        setIsStreaming(false);
-        setTurns([]);
+    const restoreSession = useCallback(
+        async (sessionId: string): Promise<void> => {
+            const restoreSequence = restoreSequenceRef.current + 1;
+            restoreSequenceRef.current = restoreSequence;
+            abortControllerRef.current?.abort();
+            abortControllerRef.current = null;
+            sessionIdRef.current = sessionId;
+            setActiveSessionId(sessionId);
+            setInput("");
+            setIsStreaming(false);
+            setTurns([]);
 
-        try {
-            const response = await tongjiStudentService.SessionMessagesGET({
-                limit: 100,
-                session_id: sessionId,
-            });
-            if (restoreSequenceRef.current !== restoreSequence) {
-                return;
+            try {
+                const response = await tongjiStudentService.SessionMessagesGET({
+                    limit: 100,
+                    session_id: sessionId,
+                });
+                if (restoreSequenceRef.current !== restoreSequence) {
+                    return;
+                }
+
+                const restoredTurns = restoreChatTurns(response);
+                turnSequenceRef.current = restoredTurns.length;
+                setTurns(restoredTurns);
+            } catch {
+                if (restoreSequenceRef.current === restoreSequence) {
+                    setTurns([]);
+                    onSessionRestoreFailed?.();
+                }
             }
+        },
+        [onSessionRestoreFailed],
+    );
 
-            const restoredTurns = restoreChatTurns(response);
-            turnSequenceRef.current = restoredTurns.length;
-            setTurns(restoredTurns);
-        } catch {
-            if (restoreSequenceRef.current === restoreSequence) {
-                setTurns([]);
-                onSessionRestoreFailed?.();
-            }
-        }
-    }, [onSessionRestoreFailed]);
-
-    async function getOrCreateSessionId(): Promise<string> {
+    async function getOrCreateSessionId(
+        isAnonymous: boolean = false,
+    ): Promise<string> {
+        // 当前在某个 session 中，直接返回 session_id
         if (sessionIdRef.current) {
+            if (isAnonymous) {
+                updateAnonymousSessionLastActiveAt(sessionIdRef.current);
+            }
             return sessionIdRef.current;
         }
-
+        // 欢迎页触发，创建新的 session
         const session = await tongjiStudentService.SessionPOST({});
         sessionIdRef.current = session.session_id;
         setActiveSessionId(session.session_id);
-        await onSessionCreated?.({
-            id: session.session_id,
-            lastActiveAt: new Date().toISOString(),
-            name: "New Session",
-        });
+        await onSessionCreated?.(
+            {
+                id: session.session_id,
+                lastActiveAt: new Date().toISOString(),
+                name: "New Session",
+            },
+            isAnonymous,
+        );
+        // 匿名会话，更新当前会话的 lastActiveAt
+        if (isAnonymous) {
+            updateAnonymousSessionLastActiveAt(session.session_id);
+        }
         return session.session_id;
     }
 
@@ -299,7 +325,11 @@ function mapServerEvent(event: ServerEvent): ChatStreamEvent | null {
         case "agent.status":
             return {
                 type: "status",
-                label: readText(data, ["label", "message", "status"], "正在处理"),
+                label: readText(
+                    data,
+                    ["label", "message", "status"],
+                    "正在处理",
+                ),
                 detail: readOptionalText(data, ["detail", "description"]),
             };
         case "assistant.reasoning":
@@ -316,19 +346,33 @@ function mapServerEvent(event: ServerEvent): ChatStreamEvent | null {
             return {
                 type: "tool_started",
                 id: readText(data, ["id", "tool_call_id"], "tool"),
-                label: readText(data, ["label", "name", "tool_name"], "正在调用工具"),
+                label: readText(
+                    data,
+                    ["label", "name", "tool_name"],
+                    "正在调用工具",
+                ),
             };
         case "tool.call.completed":
             return {
                 type: "tool_completed",
                 id: readText(data, ["id", "tool_call_id"], "tool"),
-                label: readText(data, ["label", "name", "tool_name"], "工具调用完成"),
-                durationMs: readOptionalNumber(data, ["duration_ms", "durationMs"]),
+                label: readText(
+                    data,
+                    ["label", "name", "tool_name"],
+                    "工具调用完成",
+                ),
+                durationMs: readOptionalNumber(data, [
+                    "duration_ms",
+                    "durationMs",
+                ]),
             };
         case "run.completed":
             return {
                 type: "completed",
-                durationMs: readOptionalNumber(data, ["duration_ms", "durationMs"]),
+                durationMs: readOptionalNumber(data, [
+                    "duration_ms",
+                    "durationMs",
+                ]),
             };
         case "run.failed":
             return { type: "failed" };
@@ -402,7 +446,8 @@ function updateTurn(
                     state: "completed",
                 })),
                 durationMs:
-                    event.durationMs ?? Math.max(0, Date.now() - turn.startedAt),
+                    event.durationMs ??
+                    Math.max(0, Date.now() - turn.startedAt),
                 state: "completed",
             };
         case "failed":
@@ -478,10 +523,7 @@ function restoreChatTurns(response: unknown): ChatTurn[] {
         (left, right) => left.sequence - right.sequence,
     );
     const turnsByRunId = new Map<string, ChatTurn>();
-    const runTimestamps = new Map<
-        string,
-        { first?: number; last?: number }
-    >();
+    const runTimestamps = new Map<string, { first?: number; last?: number }>();
     const turns: ChatTurn[] = [];
 
     for (const message of messages) {
@@ -529,10 +571,7 @@ function restoreChatTurns(response: unknown): ChatTurn[] {
 
     for (const turn of turns) {
         const timestamps = runTimestamps.get(turn.id);
-        if (
-            timestamps?.first !== undefined &&
-            timestamps.last !== undefined
-        ) {
+        if (timestamps?.first !== undefined && timestamps.last !== undefined) {
             turn.durationMs = Math.max(0, timestamps.last - timestamps.first);
         }
     }

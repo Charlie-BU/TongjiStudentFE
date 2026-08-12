@@ -5,10 +5,11 @@ import { SessionSidebar } from "./components/session-sidebar/SessionSidebar";
 import { TestAccessTokenControl } from "./components/test-access-token/TestAccessTokenControl";
 import { OauthCallback } from "./components/oauth-callback/OauthCallback";
 import { ChatArea } from "./components/chat-area/ChatArea";
-import { type CreatedSession, useChat } from "./hooks/use-chat";
+import { type SessionSummary, useChat } from "./hooks/use-chat";
 import { useSessionRoute } from "./hooks/use-session-route";
 import { tongjiStudentService } from "./services/tongji-student";
 import type { UserBasicInfo200Response } from "./cam-auto-generate/TongjiStudent/namespaces";
+import { addAnonymousSession } from "./utils/anonymous-session";
 
 const SIDEBAR_DEFAULT_WIDTH = 260;
 const SIDEBAR_MIN_WIDTH = 224;
@@ -22,33 +23,43 @@ function App() {
 // ChatApp 负责常规页面的全局 antd 主题和聊天区域装配。
 function ChatApp() {
   const { openNewChat, openSession, sessionId } = useSessionRoute();
-  const [createdSessions, setCreatedSessions] = useState<CreatedSession[]>([]);
+  const [createdSessions, setCreatedSessions] = useState<SessionSummary[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userBasicInfo, setUserBasicInfo] = useState<UserBasicInfo200Response | null>(null);
   const handleSessionRestoreFailed = useCallback((): void => {
     openNewChat();
   }, [openNewChat]);
-  const handleSessionCreated = useCallback(async (session: CreatedSession): Promise<void> => {
+
+  // 创建 session 后
+  const handleSessionCreated = useCallback(async (session: SessionSummary, isAnonymous: boolean = false): Promise<void> => {
+    if (isAnonymous) {
+      // 匿名会话需添加到 localStorage
+      addAnonymousSession(session);
+    }
     setCreatedSessions((currentSessions) => [
       session,
       ...currentSessions.filter((currentSession) => currentSession.id !== session.id),
     ]);
-    openSession(session.id);
+    openSession(session.id);   // 页面跳转到当前 session
     await Promise.resolve();
   }, [openSession]);
+
   const chat = useChat({
+    isAnonymous: !Boolean(userBasicInfo),
     onSessionCreated: handleSessionCreated,
     onSessionRestoreFailed: handleSessionRestoreFailed,
   });
+
   const { restoreSession, startNewChat } = chat;
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const handleNewChat = useCallback((): void => {
     setIsMobileSidebarOpen(false);
     openNewChat();
   }, [openNewChat]);
+
   const handleSessionSelect = useCallback((nextSessionId: string): void => {
     setIsMobileSidebarOpen(false);
-    openSession(nextSessionId);
+    openSession(nextSessionId);   // 页面跳转到当前 session
   }, [openSession]);
 
   useEffect(() => {

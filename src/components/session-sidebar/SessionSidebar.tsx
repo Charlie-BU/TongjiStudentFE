@@ -1,15 +1,21 @@
 import { useEffect, useState } from "react";
-import { EditOutlined, LoadingOutlined, LogoutOutlined, SwapOutlined, UserOutlined } from "@ant-design/icons";
+import {
+    EditOutlined,
+    LoadingOutlined,
+    LogoutOutlined,
+    SwapOutlined,
+    UserOutlined,
+} from "@ant-design/icons";
 import { Button, Dropdown, Image, Typography, type MenuProps } from "antd";
 import tongjiLogo from "../../assets/tongji.svg";
 import { tongjiStudentService } from "../../services/tongji-student";
-import type { CreatedSession } from "../../hooks/use-chat";
 import "./SessionSidebar.css";
 import type { UserBasicInfo200Response } from "../../cam-auto-generate/TongjiStudent/namespaces";
+import type { SessionSummary } from "../../hooks/use-chat";
+import { getAnonymousSessions } from "../../utils/anonymous-session";
 
 const { Text, Title } = Typography;
 
-type SessionSummary = CreatedSession;
 const TONGJI_OAUTH_AUTHORIZE_PATH = "/v1/tongji/oauth/authorize";
 
 type SessionSidebarProps = {
@@ -63,6 +69,8 @@ export function SessionSidebar({
 
     useEffect(() => {
         if (!userBasicInfo) {
+            // 未登录，从 localStorage 中获取匿名会话
+            setSessions(getAnonymousSessions());
             return;
         }
 
@@ -138,7 +146,7 @@ export function SessionSidebar({
                             >
                                 <LoadingOutlined />
                             </div>
-                        ) : userBasicInfo ? (
+                        ) : (
                             displayedSessions.map((session) => (
                                 <Button
                                     block
@@ -152,18 +160,28 @@ export function SessionSidebar({
                                     title={session.name}
                                     type="text"
                                 >
-                                    <Text ellipsis strong>{session.name}</Text>
+                                    <Text ellipsis strong>
+                                        {session.name}
+                                    </Text>
                                 </Button>
                             ))
-                        ) : null}
+                        )}
                     </div>
                 </section>
             </div>
 
             <div className="session-sidebar-profile">
                 {userBasicInfo ? (
-                    <Dropdown menu={{ items: userMenuItems }} placement="topLeft" trigger={["hover", "click"]}>
-                        <button aria-label="用户菜单" className="session-sidebar-profile-trigger" type="button">
+                    <Dropdown
+                        menu={{ items: userMenuItems }}
+                        placement="topLeft"
+                        trigger={["hover", "click"]}
+                    >
+                        <button
+                            aria-label="用户菜单"
+                            className="session-sidebar-profile-trigger"
+                            type="button"
+                        >
                             <UserOutlined style={{ fontSize: 14 }} />
                             <ProfileInfo userBasicInfo={userBasicInfo} />
                         </button>
@@ -185,11 +203,17 @@ export function SessionSidebar({
 }
 
 function getTongjiOauthAuthorizeUrl(): string {
-    const baseURL = (import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? "").replace(/\/+$/, "");
+    const baseURL = (
+        import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? ""
+    ).replace(/\/+$/, "");
     return `${baseURL}${TONGJI_OAUTH_AUTHORIZE_PATH}`;
 }
 
-function ProfileInfo({ userBasicInfo }: { userBasicInfo?: UserBasicInfo200Response }) {
+function ProfileInfo({
+    userBasicInfo,
+}: {
+    userBasicInfo?: UserBasicInfo200Response;
+}) {
     return (
         <span className="session-sidebar-profile-info">
             <Text className="session-sidebar-profile-name" strong>
