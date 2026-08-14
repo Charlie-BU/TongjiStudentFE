@@ -6,16 +6,7 @@
     min-height: 0;
     overflow: hidden;
     padding: 28px 16px 20px;
-    background: linear-gradient(
-        180deg,
-        rgb(224 226 229 / 78%) 0%,
-        rgb(238 240 243 / 74%) 26%,
-        rgb(242 244 247 / 72%) 68%,
-        rgb(238 240 243 / 76%) 100%
-    );
-    border-right: 1px solid var(--ant-color-border-secondary);
-    backdrop-filter: blur(20px) saturate(120%);
-    -webkit-backdrop-filter: blur(20px) saturate(120%);
+    border-right: 1px solid var(--ant-color-border);
 }
 
 .session-sidebar-main {
