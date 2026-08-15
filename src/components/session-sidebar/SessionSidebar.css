@@ -75,6 +75,15 @@
     text-align: left;
 }
 
+.session-list-item-input.ant-input {
+    display: block;
+    height: 40px;
+    padding: 8px;
+    border-radius: var(--ant-border-radius);
+    background: var(--ant-color-fill-secondary);
+    font-size: 14px;
+}
+
 .session-list-item.ant-btn:hover,
 .session-list-item-selected.ant-btn {
     background: var(--ant-color-fill-secondary);

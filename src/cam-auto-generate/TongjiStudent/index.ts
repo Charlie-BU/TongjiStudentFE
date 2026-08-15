@@ -25,6 +25,8 @@ import type {
   SessionRename200Response,
   TongjiOauthTokenBodyRequest,
   TongjiOauthToken200Response,
+  SessionDeleteBodyRequest,
+  SessionDeleteHeaderRequest,
 } from './namespaces';
 
 export default class TongjiStudentService<T> {
@@ -205,6 +207,20 @@ export default class TongjiStudentService<T> {
     const data = { code: _req['code'], state: _req['state'] };
     const params = undefined;
     const headers = undefined;
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 修改当前用户拥有的持久会话名称 */
+  SessionDeleteDELETE(
+    req: SessionDeleteBodyRequest & SessionDeleteHeaderRequest,
+    options?: T,
+  ): Promise<any> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions');
+    const method = 'DELETE';
+    const data = { session_id: _req['session_id'] };
+    const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
   }
 }

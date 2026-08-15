@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import {
     EditOutlined,
+    DeleteOutlined,
     LoadingOutlined,
     LogoutOutlined,
     SwapOutlined,
     UserOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Image, Typography, type MenuProps } from "antd";
+import { Button, Dropdown, Image, Input, Modal, Typography, type MenuProps } from "antd";
 import tongjiLogo from "../../assets/tongji.svg";
 import { tongjiStudentService } from "../../services/tongji-student";
 import "./SessionSidebar.css";
@@ -22,8 +23,10 @@ type SessionSidebarProps = {
     createdSessions: SessionSummary[];
     isMobileOpen?: boolean;
     onNewChat: () => void;
+    onSessionDeleted?: (sessionId: string) => void;
     onSessionSelect: (sessionId: string) => void;
     selectedSessionId: string | null;
+    streamingSessionId?: string | null;
     userBasicInfo?: UserBasicInfo200Response | null;
     onOauthRedirect?: (url: string) => void;
     onPageReload?: () => void;
@@ -34,14 +37,17 @@ export function SessionSidebar({
     createdSessions,
     isMobileOpen = false,
     onNewChat,
+    onSessionDeleted = () => undefined,
     onSessionSelect,
     selectedSessionId,
+    streamingSessionId = null,
     userBasicInfo = null,
     onOauthRedirect = (url) => window.location.assign(url),
     onPageReload = () => window.location.reload(),
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [editingSession, setEditingSession] = useState<SessionSummary | null>(null);
     const displayedSessions = mergeSessions([...createdSessions, ...sessions]);
     const isSessionListLoading = userBasicInfo !== null && isLoading;
     const startOauth = (): void => {
@@ -66,6 +72,51 @@ export function SessionSidebar({
             onClick: logout,
         },
     ];
+    const renameSession = async (session: SessionSummary): Promise<void> => {
+        const name = editingSession?.id === session.id
+            ? editingSession.name.trim()
+            : session.name;
+        setEditingSession(null);
+        if (!name || name === session.name) {
+            return;
+        }
+
+        const renamedSession = await tongjiStudentService.SessionRenamePOST({
+            name,
+            session_id: session.id,
+        });
+        setSessions((currentSessions) => {
+            const updatedSession = { ...session, name: renamedSession.name };
+            const exists = currentSessions.some((item) => item.id === session.id);
+            return exists
+                ? currentSessions.map((item) =>
+                    item.id === session.id ? updatedSession : item,
+                )
+                : [...currentSessions, updatedSession];
+        });
+    };
+    const deleteSession = (session: SessionSummary): void => {
+        Modal.confirm({
+            cancelText: "取消",
+            content: `删除“${session.name}”后将无法恢复。`,
+            okButtonProps: { danger: true },
+            okText: "删除",
+            onOk: async () => {
+                await tongjiStudentService.SessionDeleteDELETE({
+                    Authorization: "",
+                    session_id: session.id,
+                });
+                setSessions((currentSessions) =>
+                    currentSessions.filter((item) => item.id !== session.id),
+                );
+                onSessionDeleted(session.id);
+                if (session.id === selectedSessionId) {
+                    onNewChat();
+                }
+            },
+            title: "确认删除会话？",
+        });
+    };
 
     useEffect(() => {
         if (!userBasicInfo) {
@@ -148,22 +199,67 @@ export function SessionSidebar({
                             </div>
                         ) : (
                             displayedSessions.map((session) => (
-                                <Button
-                                    block
-                                    className={`session-list-item${
-                                        session.id === selectedSessionId
-                                            ? " session-list-item-selected"
-                                            : ""
-                                    }`}
+                                <Dropdown
+                                    disabled={!userBasicInfo}
                                     key={session.id}
-                                    onClick={() => onSessionSelect(session.id)}
-                                    title={session.name}
-                                    type="text"
+                                    menu={{
+                                        items: [
+                                            {
+                                                icon: <EditOutlined />,
+                                                key: "rename",
+                                                label: "重命名",
+                                                onClick: () => setEditingSession(session),
+                                            },
+                                            {
+                                                disabled: session.id === streamingSessionId,
+                                                danger: true,
+                                                icon: <DeleteOutlined />,
+                                                key: "delete",
+                                                label: "删除",
+                                                onClick: () => deleteSession(session),
+                                                title: session.id === streamingSessionId
+                                                    ? "正在工作中，请等待工作完成后删除"
+                                                    : undefined,
+                                            },
+                                        ],
+                                    }}
+                                    trigger={["contextMenu"]}
                                 >
-                                    <Text ellipsis strong>
-                                        {session.name}
-                                    </Text>
-                                </Button>
+                                    {editingSession?.id === session.id ? (
+                                        <Input
+                                            id={session.id}
+                                            aria-label={`重命名 ${session.name}`}
+                                            autoFocus
+                                            className="session-list-item-input"
+                                            onBlur={() => void renameSession(session)}
+                                            onChange={(event) =>
+                                                setEditingSession((current) =>
+                                                    current?.id === session.id
+                                                        ? { ...current, name: event.target.value }
+                                                        : current,
+                                                )
+                                            }
+                                            onPressEnter={(event) => event.currentTarget.blur()}
+                                            value={editingSession.name}
+                                        />
+                                    ) : (
+                                        <Button
+                                            block
+                                            className={`session-list-item${
+                                                session.id === selectedSessionId
+                                                    ? " session-list-item-selected"
+                                                    : ""
+                                            }`}
+                                            onClick={() => onSessionSelect(session.id)}
+                                            title={session.name}
+                                            type="text"
+                                        >
+                                            <Text ellipsis strong>
+                                                {session.name}
+                                            </Text>
+                                        </Button>
+                                    )}
+                                </Dropdown>
                             ))
                         )}
                     </div>

@@ -62,6 +62,12 @@ function ChatApp() {
     openSession(nextSessionId);   // 页面跳转到当前 session
   }, [openSession]);
 
+  const handleSessionDeleted = useCallback((deletedSessionId: string): void => {
+    setCreatedSessions((currentSessions) =>
+      currentSessions.filter((session) => session.id !== deletedSessionId),
+    );
+  }, []);
+
   useEffect(() => {
     if (sessionId) {
       if (chat.activeSessionId === sessionId) {
@@ -174,8 +180,10 @@ function ChatApp() {
           createdSessions={createdSessions}
           isMobileOpen={isMobileSidebarOpen}
           onNewChat={handleNewChat}
+          onSessionDeleted={handleSessionDeleted}
           onSessionSelect={handleSessionSelect}
           selectedSessionId={sessionId}
+          streamingSessionId={chat.isStreaming ? chat.activeSessionId : null}
           userBasicInfo={userBasicInfo}
         />
         {isMobileSidebarOpen ? (

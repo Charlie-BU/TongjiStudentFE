@@ -104,23 +104,23 @@ export interface TaskPlanHeaderRequest {
 }
 
 export interface TaskPlan200ResponsePlanItemTasksItem {
+  /** 任务状态： pending 、 in_progress 、 done 、 failed */
+  status: string;
   /** 任务唯一 ID */
   id: string;
   /** 任务描述 */
   desc: string;
-  /** 任务状态： pending 、 in_progress 、 done 、 failed */
-  status: string;
 }
 
 export interface TaskPlan200ResponsePlanItem {
-  /** 任务计划版本号，每次更新计划会递增 */
-  revision: number;
-  /** 任务列表 */
-  tasks: TaskPlan200ResponsePlanItemTasksItem[];
   /** 计划最近更新时间 */
   updated_at: string;
   /** 当前 session_id */
   session_id: string;
+  /** 任务计划版本号，每次更新计划会递增 */
+  revision: number;
+  /** 任务列表 */
+  tasks: TaskPlan200ResponsePlanItemTasksItem[];
 }
 
 export interface TaskPlan200Response {
@@ -238,4 +238,14 @@ export interface TongjiOauthToken200Response {
   expires_in: number;
   /** 当前 token 的 scope */
   scope: string;
+}
+
+export interface SessionDeleteHeaderRequest {
+  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
+  Authorization: string;
+}
+
+export interface SessionDeleteBodyRequest {
+  /** session id */
+  session_id: string;
 }
