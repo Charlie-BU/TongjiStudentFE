@@ -149,6 +149,17 @@
   border-radius: 12px;
 }
 
+.markdown-content .ant-image {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
+.markdown-content .ant-image .ant-image-img {
+  cursor: zoom-in;
+}
+
 .markdown-content table {
   width: 100%;
   margin-block: 12px;

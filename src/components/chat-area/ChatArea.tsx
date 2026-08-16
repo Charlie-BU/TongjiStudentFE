@@ -6,7 +6,7 @@ import {
     type CSSProperties,
 } from "react";
 import { CheckOutlined, CodeOutlined, CopyOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Collapse, Typography } from "antd";
+import { Button, Collapse, Image, Typography } from "antd";
 import "katex/dist/katex.min.css";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -71,6 +71,21 @@ const markdownComponents: Components = {
     },
     pre({ children }) {
         return <>{children}</>;
+    },
+    img({ alt, src, title }) {
+        if (!src) {
+            return null;
+        }
+
+        return (
+            <Image
+                alt={alt ?? ""}
+                className="markdown-image"
+                preview={{ mask: "点击放大" }}
+                src={src}
+                title={title}
+            />
+        );
     },
 };
 
