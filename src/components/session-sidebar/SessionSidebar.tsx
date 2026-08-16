@@ -7,13 +7,24 @@ import {
     SwapOutlined,
     UserOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Image, Input, Modal, Typography, type MenuProps } from "antd";
+import {
+    Button,
+    Dropdown,
+    Image,
+    Input,
+    Modal,
+    Typography,
+    type MenuProps,
+} from "antd";
 import tongjiLogo from "../../assets/tongji.svg";
 import { tongjiStudentService } from "../../services/tongji-student";
 import "./SessionSidebar.css";
 import type { UserBasicInfo200Response } from "../../cam-auto-generate/TongjiStudent/namespaces";
 import type { SessionSummary } from "../../hooks/use-chat";
-import { getAnonymousSessions } from "../../utils/anonymous-session";
+import {
+    clearAnonymousSessions,
+    getAnonymousSessions,
+} from "../../utils/anonymous-session";
 
 const { Text, Title } = Typography;
 
@@ -47,10 +58,13 @@ export function SessionSidebar({
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [editingSession, setEditingSession] = useState<SessionSummary | null>(null);
+    const [editingSession, setEditingSession] = useState<SessionSummary | null>(
+        null,
+    );
     const displayedSessions = mergeSessions([...createdSessions, ...sessions]);
     const isSessionListLoading = userBasicInfo !== null && isLoading;
     const startOauth = (): void => {
+        clearAnonymousSessions(); // 清除匿名会话
         onOauthRedirect(getTongjiOauthAuthorizeUrl());
     };
     const logout = (): void => {
@@ -73,9 +87,10 @@ export function SessionSidebar({
         },
     ];
     const renameSession = async (session: SessionSummary): Promise<void> => {
-        const name = editingSession?.id === session.id
-            ? editingSession.name.trim()
-            : session.name;
+        const name =
+            editingSession?.id === session.id
+                ? editingSession.name.trim()
+                : session.name;
         setEditingSession(null);
         if (!name || name === session.name) {
             return;
@@ -87,11 +102,13 @@ export function SessionSidebar({
         });
         setSessions((currentSessions) => {
             const updatedSession = { ...session, name: renamedSession.name };
-            const exists = currentSessions.some((item) => item.id === session.id);
+            const exists = currentSessions.some(
+                (item) => item.id === session.id,
+            );
             return exists
                 ? currentSessions.map((item) =>
-                    item.id === session.id ? updatedSession : item,
-                )
+                      item.id === session.id ? updatedSession : item,
+                  )
                 : [...currentSessions, updatedSession];
         });
     };
@@ -200,30 +217,43 @@ export function SessionSidebar({
                         ) : (
                             displayedSessions.map((session) => (
                                 <Dropdown
-                                    disabled={!userBasicInfo}
                                     key={session.id}
                                     menu={{
-                                        items: [
-                                            {
-                                                icon: <EditOutlined />,
-                                                key: "rename",
-                                                label: "重命名",
-                                                onClick: () => setEditingSession(session),
-                                            },
-                                            {
-                                                disabled: session.id === streamingSessionId,
-                                                danger: true,
-                                                icon: <DeleteOutlined />,
-                                                key: "delete",
-                                                label: "删除",
-                                                onClick: () => deleteSession(session),
-                                                title: session.id === streamingSessionId
-                                                    ? "正在工作中，请等待工作完成后删除"
-                                                    : undefined,
-                                            },
-                                        ],
+                                        items: userBasicInfo
+                                            ? [
+                                                  {
+                                                      icon: <EditOutlined />,
+                                                      key: "rename",
+                                                      label: "重命名",
+                                                      onClick: () =>
+                                                          setEditingSession(
+                                                              session,
+                                                          ),
+                                                  },
+                                                  {
+                                                      disabled:
+                                                          session.id ===
+                                                          streamingSessionId,
+                                                      danger: true,
+                                                      icon: <DeleteOutlined />,
+                                                      key: "delete",
+                                                      label: "删除",
+                                                      onClick: () =>
+                                                          deleteSession(
+                                                              session,
+                                                          ),
+                                                      title:
+                                                          session.id ===
+                                                          streamingSessionId
+                                                              ? "正在工作中，请等待工作完成后删除"
+                                                              : undefined,
+                                                  },
+                                              ]
+                                            : [],
                                     }}
-                                    trigger={["contextMenu"]}
+                                    trigger={
+                                        userBasicInfo ? ["contextMenu"] : []
+                                    }
                                 >
                                     {editingSession?.id === session.id ? (
                                         <Input
@@ -231,15 +261,23 @@ export function SessionSidebar({
                                             aria-label={`重命名 ${session.name}`}
                                             autoFocus
                                             className="session-list-item-input"
-                                            onBlur={() => void renameSession(session)}
+                                            onBlur={() =>
+                                                void renameSession(session)
+                                            }
                                             onChange={(event) =>
                                                 setEditingSession((current) =>
                                                     current?.id === session.id
-                                                        ? { ...current, name: event.target.value }
+                                                        ? {
+                                                              ...current,
+                                                              name: event.target
+                                                                  .value,
+                                                          }
                                                         : current,
                                                 )
                                             }
-                                            onPressEnter={(event) => event.currentTarget.blur()}
+                                            onPressEnter={(event) =>
+                                                event.currentTarget.blur()
+                                            }
                                             value={editingSession.name}
                                         />
                                     ) : (
@@ -250,7 +288,9 @@ export function SessionSidebar({
                                                     ? " session-list-item-selected"
                                                     : ""
                                             }`}
-                                            onClick={() => onSessionSelect(session.id)}
+                                            onClick={() =>
+                                                onSessionSelect(session.id)
+                                            }
                                             title={session.name}
                                             type="text"
                                         >

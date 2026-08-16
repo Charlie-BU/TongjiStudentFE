@@ -114,16 +114,22 @@ describe("SessionSidebar", () => {
   });
 
   it("应隐藏匿名会话的重命名和删除菜单", async () => {
+    const user = userEvent.setup();
+    const onSessionSelect = vi.fn();
     render(
       <SessionSidebar
         createdSessions={[{ id: "anon-001", lastActiveAt: "2026-08-10T10:00:00Z", name: "匿名会话" }]}
         onNewChat={vi.fn()}
-        onSessionSelect={vi.fn()}
+        onSessionSelect={onSessionSelect}
         selectedSessionId={null}
       />,
     );
 
-    fireEvent.contextMenu(await screen.findByRole("button", { name: "匿名会话" }));
+    const sessionButton = await screen.findByRole("button", { name: "匿名会话" });
+    await user.click(sessionButton);
+    expect(onSessionSelect).toHaveBeenCalledWith("anon-001");
+
+    fireEvent.contextMenu(sessionButton);
 
     expect(screen.queryByText("重命名")).not.toBeInTheDocument();
     expect(screen.queryByText("删除")).not.toBeInTheDocument();
