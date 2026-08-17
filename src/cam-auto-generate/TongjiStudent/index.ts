@@ -210,7 +210,7 @@ export default class TongjiStudentService<T> {
     return this.request({ url, method, data, params, headers }, options);
   }
 
-  /** 修改当前用户拥有的持久会话名称 */
+  /** 删除持久会话及其全部 messages、plans */
   SessionDeleteDELETE(
     req: SessionDeleteBodyRequest & SessionDeleteHeaderRequest,
     options?: T,

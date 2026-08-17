@@ -53,10 +53,10 @@ export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
 }
 
 export interface SessionMessages200ResponseMessagesItemTool_callsItem {
+  index: number;
   /** 工具调用类型，例如：function_call */
   type: string;
   function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
-  index: number;
   id: string;
 }
 
