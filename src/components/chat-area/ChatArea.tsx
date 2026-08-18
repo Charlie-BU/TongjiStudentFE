@@ -104,11 +104,18 @@ function MarkdownCodeBlock({
     }, []);
 
     const copyCode = async (): Promise<void> => {
-        if (!navigator.clipboard) {
-            return;
+        try {
+            if (navigator.clipboard) {
+                await navigator.clipboard.writeText(code);
+            } else if (!copyTextWithSelection(code)) {
+                return;
+            }
+        } catch {
+            if (!copyTextWithSelection(code)) {
+                return;
+            }
         }
 
-        await navigator.clipboard.writeText(code);
         window.clearTimeout(resetCopyStateRef.current);
         setIsCopied(true);
         resetCopyStateRef.current = window.setTimeout(() => setIsCopied(false), 1600);
@@ -146,6 +153,27 @@ function MarkdownCodeBlock({
             </SyntaxHighlighter>
         </div>
     );
+}
+
+function copyTextWithSelection(text: string): boolean {
+    if (typeof document.execCommand !== "function") {
+        return false;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.select();
+    textarea.setSelectionRange(0, textarea.value.length);
+    try {
+        return document.execCommand("copy");
+    } finally {
+        textarea.remove();
+    }
 }
 
 function formatCodeLanguage(language?: string): string {

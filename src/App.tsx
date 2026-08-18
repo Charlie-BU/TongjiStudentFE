@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type CSSProperties, type PointerEvent } from "react";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
-import { Button, ConfigProvider } from "antd";
+import { Button, ConfigProvider, theme } from "antd";
 import { SessionSidebar } from "./components/session-sidebar/SessionSidebar";
 import { TestAccessTokenControl } from "./components/test-access-token/TestAccessTokenControl";
 import { OauthCallback } from "./components/oauth-callback/OauthCallback";
 import { ChatArea } from "./components/chat-area/ChatArea";
+import { LoginReminderModal } from "./components/login-reminder-modal/LoginReminderModal";
+import { WelcomePage } from "./components/welcome-page/WelcomePage";
 import { type SessionSummary, useChat } from "./hooks/use-chat";
 import { useSessionRoute } from "./hooks/use-session-route";
 import { tongjiStudentService } from "./services/tongji-student";
@@ -15,9 +17,51 @@ const SIDEBAR_DEFAULT_WIDTH = 260;
 const SIDEBAR_MIN_WIDTH = 224;
 const SIDEBAR_MAX_WIDTH = 570;
 const TONGJI_ACCESS_TOKEN_KEY = "tongji-access-token";
+const TONGJI_OAUTH_AUTHORIZE_PATH = "/v1/tongji/oauth/authorize";
+const LOGIN_REMINDER_SEEN_KEY = "tongji-login-reminder-seen";
 
 function App() {
   return window.location.pathname === "/oauth/callback" ? <OauthCallback /> : <ChatApp />;
+}
+
+function ThemeCssVariables() {
+  const { token } = theme.useToken();
+
+  useEffect(() => {
+    const rootStyle = document.documentElement.style;
+    const cssVars = {
+      "--ant-border-radius": `${token.borderRadius}px`,
+      "--ant-box-shadow-tertiary": token.boxShadowTertiary,
+      "--ant-color-bg-container": token.colorBgContainer,
+      "--ant-color-bg-container-disabled": token.colorBgContainerDisabled,
+      "--ant-color-bg-layout": token.colorBgLayout,
+      "--ant-color-border": token.colorBorder,
+      "--ant-color-border-secondary": token.colorBorderSecondary,
+      "--ant-color-fill": token.colorFill,
+      "--ant-color-fill-quaternary": token.colorFillQuaternary,
+      "--ant-color-fill-secondary": token.colorFillSecondary,
+      "--ant-color-fill-tertiary": token.colorFillTertiary,
+      "--ant-color-primary": token.colorPrimary,
+      "--ant-color-text": token.colorText,
+      "--ant-color-text-disabled": token.colorTextDisabled,
+      "--ant-color-text-light-solid": token.colorTextLightSolid,
+      "--ant-color-text-placeholder": token.colorTextPlaceholder,
+      "--ant-color-text-secondary": token.colorTextSecondary,
+      "--ant-color-text-tertiary": token.colorTextTertiary,
+    } as const;
+
+    Object.entries(cssVars).forEach(([name, value]) => {
+      rootStyle.setProperty(name, value);
+    });
+
+    return () => {
+      Object.keys(cssVars).forEach((name) => {
+        rootStyle.removeProperty(name);
+      });
+    };
+  }, [token]);
+
+  return null;
 }
 
 // ChatApp 负责常规页面的全局 antd 主题和聊天区域装配。
@@ -26,6 +70,8 @@ function ChatApp() {
   const [createdSessions, setCreatedSessions] = useState<SessionSummary[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [userBasicInfo, setUserBasicInfo] = useState<UserBasicInfo200Response | null>(null);
+  const [isUserInfoResolved, setIsUserInfoResolved] = useState(false);
+  const [isLoginReminderOpen, setIsLoginReminderOpen] = useState(false);
   const handleSessionRestoreFailed = useCallback((): void => {
     openNewChat();
   }, [openNewChat]);
@@ -45,7 +91,7 @@ function ChatApp() {
   }, [openSession]);
 
   const chat = useChat({
-    isAnonymous: !Boolean(userBasicInfo),
+    isAnonymous: userBasicInfo === null,
     onSessionCreated: handleSessionCreated,
     onSessionRestoreFailed: handleSessionRestoreFailed,
   });
@@ -95,10 +141,12 @@ function ChatApp() {
 
         if (user) {
           setUserBasicInfo(user);
+          setIsUserInfoResolved(true);
           return;
         }
 
         setUserBasicInfo(null);
+        setIsUserInfoResolved(true);
       })
       .catch((error: unknown) => {
         if (isActive) {
@@ -106,12 +154,39 @@ function ChatApp() {
             clearAccessToken();
           }
           setUserBasicInfo(null);
+          setIsUserInfoResolved(true);
         }
       });
 
     return () => {
       isActive = false;
     };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !isUserInfoResolved ||
+      userBasicInfo !== null ||
+      window.sessionStorage.getItem(LOGIN_REMINDER_SEEN_KEY)
+    ) {
+      return;
+    }
+
+    window.sessionStorage.setItem(LOGIN_REMINDER_SEEN_KEY, "true");
+    const openReminderTimer = window.setTimeout(
+      () => setIsLoginReminderOpen(true),
+      0,
+    );
+    return () => window.clearTimeout(openReminderTimer);
+  }, [isUserInfoResolved, userBasicInfo]);
+
+  const openLoginReminder = useCallback((): void => {
+    setIsLoginReminderOpen(true);
+  }, []);
+
+  const startOauth = useCallback((): void => {
+    const baseURL = (import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? "").replace(/\/+$/, "");
+    window.location.assign(`${baseURL}${TONGJI_OAUTH_AUTHORIZE_PATH}`);
   }, []);
 
   useEffect(() => {
@@ -168,6 +243,7 @@ function ChatApp() {
         },
       }}
     >
+      <ThemeCssVariables />
       <div
         className="chat-app-layout"
         style={
@@ -209,8 +285,22 @@ function ChatApp() {
           onPointerDown={startSidebarResize}
           role="separator"
         />
-        <ChatArea chat={chat} />
+        {sessionId ? (
+          <ChatArea chat={chat} />
+        ) : (
+          <WelcomePage
+            chat={chat}
+            isLoggedIn={userBasicInfo !== null}
+            onLoginRequired={openLoginReminder}
+            username={userBasicInfo?.name}
+          />
+        )}
       </div>
+      <LoginReminderModal
+        onCancel={() => setIsLoginReminderOpen(false)}
+        onLogin={startOauth}
+        open={isLoginReminderOpen}
+      />
       {import.meta.env.TEST_ENV === "true" ? <TestAccessTokenControl /> : null}
     </ConfigProvider>
   );

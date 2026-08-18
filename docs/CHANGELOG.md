@@ -1,3 +1,59 @@
+## CHANGELOG - 2026-08-19 03:23 - 新增欢迎页与登录提醒，并完善侧栏和代码复制体验
+
+### 撰写时间
+
+- 2026-08-19 03:23
+
+### Base Commit
+
+- 8219778eb21be1b694229fd96055cb7c3ae52a33
+
+### Compare Scope
+
+- index_and_working_tree
+
+### 背景与改动目标
+
+新用户进入根路径时需要更明确的提问入口、公共问题示例与个人服务的登录引导；原有聊天页直接承载输入区，无法区分新会话欢迎态和已有会话内容。同时，侧栏文案与配色需要统一，代码复制在不支持 Clipboard API 的环境中也应可用。
+
+本次新增欢迎页与登录提示 Modal，保留匿名公共问答能力，并将个人数据类推荐问题引导至统一身份认证。同步补齐主题 token 的 CSS 变量桥接、会话侧栏的展示细节和代码复制降级策略。
+
+### 改动概览
+
+- 新增 `WelcomePage`：根路径显示居中输入区、轮播推荐问题和登录标签；公共问题可直接提交，个人数据类问题在未登录时打开登录提示。
+- 新增 `LoginReminderModal`：在未登录资料加载完成后每个标签页提示一次登录权益，并支持跳转同济统一身份认证。
+- `App` 根据 session 路由在 `WelcomePage` 和 `ChatArea` 间切换；新增主题 CSS 变量注入组件，并在 `ConfigProvider` 子树中读取最终 token，确保自定义 CSS 与 Ant Design 主题一致。
+- 侧栏将 New Chat、Recents 等文案本地化为中文；无会话时隐藏“最近”标题，调整间距、容器背景和用户图标主色。
+- 代码块复制优先使用 Clipboard API；不可用或写入失败时回退到临时 textarea + `document.execCommand("copy")`。
+- 修复匿名会话初始化触发的同步 Effect 更新；登出只清理登录提示标记，不再清空同源全部 `sessionStorage`。
+- 补齐欢迎页区域的无障碍标题关联，并更新会话列表与测试环境配置的回归测试。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`useSessionRoute.sessionId` 决定当前处于欢迎态还是已打开会话；`UserBasicInfoGET` 解析完成后提供登录状态和用户姓名；`useChat` 继续统一处理输入、建会话和 SSE 提交。
+- 当前改动：根路径渲染 `WelcomePage`，公共推荐问题直接调用 `submitQuestion`；未登录点击“需登录”问题则打开 `LoginReminderModal`，确认后跳转 OAuth 授权地址。首个匿名状态在当前标签页仅自动显示一次提醒。
+- 下游影响：用户提交问题后既有 `useChat` 创建 session、更新路由并切换至 `ChatArea` 的流程保持不变。主题变量通过 `ThemeCssVariables` 写入根节点，供既有 CSS 使用；侧栏、欢迎页和 Markdown 代码块共享同一套主题色。
+
+### 改动结果与业务影响
+
+根路径现在提供欢迎式提问体验，并能在个人服务请求前清晰引导登录；已有会话仍保持原聊天渲染与恢复链路。侧栏视觉和中文文案更一致，代码复制在受限浏览器环境中具备降级能力。主题 token 与自定义 CSS 的取值已统一，避免配置主色与页面样式不一致。
+
+### 验证结果
+
+- `pnpm test`：8 个测试文件、40 个用例全部通过。
+- `pnpm test:typecheck`、`pnpm lint`、`pnpm build` 和 `git diff --check` 全部通过。
+- Vite 构建仍提示主 JavaScript bundle 超过 500 kB；本次未调整拆包策略。
+
+### 风险与待办
+
+- 登录提示以 `sessionStorage` 记录当前标签页是否已经展示；关闭后本标签页不再自动弹出，但个人服务推荐项仍可主动触发提示。
+- Clipboard 降级依赖已被逐步废弃的 `document.execCommand`，仅作为不支持现代 Clipboard API 时的兼容路径；后续应持续关注目标浏览器支持情况。
+- 欢迎页推荐问题为静态内容，若后续接入运营配置或按用户画像推荐，需要补充数据来源、缓存和内容审核边界。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): add welcome page and login guidance`
+
 ## CHANGELOG - 2026-08-12 19:42 - 支持匿名会话本地保存与侧栏恢复
 
 ### 撰写时间

@@ -1,0 +1,146 @@
+.welcome-page {
+  --chat-content-gutter: 16px;
+  --chat-content-max-width: 920px;
+
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  background: var(--ant-color-bg-layout);
+}
+
+.welcome-page-content {
+  width: min(var(--chat-content-max-width), calc(100% - var(--chat-content-gutter) * 2));
+  max-width: 780px;
+  padding: 24px 0 48px;
+}
+
+.welcome-page .welcome-page-title {
+  margin: 0 0 44px;
+  color: var(--ant-color-text);
+  font-size: clamp(28px, 2.2vw, 32px);
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.welcome-page-title-mobile {
+  display: none;
+}
+
+.welcome-page .chat-input-panel {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+  width: 100%;
+  padding: 0;
+  background: none;
+}
+
+.welcome-page .chat-input-card {
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 6%);
+}
+
+.welcome-page-suggestions {
+  display: grid;
+  gap: 4px;
+  margin-top: 26px;
+  padding-inline: 24px;
+}
+
+.welcome-page-suggestion {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  padding: 8px 0;
+  color: var(--ant-color-text-secondary);
+  font: inherit;
+  font-size: 15px;
+  line-height: 24px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.welcome-page-suggestion:hover {
+  color: var(--ant-color-text);
+}
+
+.welcome-page-suggestion-icon {
+  margin-right: 12px;
+  color: var(--ant-color-text-tertiary);
+  font-size: 16px;
+}
+
+.welcome-page-suggestion-text {
+  animation: welcome-page-suggestion-text-enter 280ms ease-out both;
+  transition: opacity 280ms ease-in, transform 280ms ease-in;
+}
+
+.welcome-page-suggestion .ant-tag {
+  margin-inline-start: 10px;
+  margin-inline-end: 0;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.welcome-page-suggestion:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.welcome-page-suggestion:disabled:hover {
+  color: var(--ant-color-text-secondary);
+}
+
+.welcome-page-suggestions-fading .welcome-page-suggestion-text {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+@keyframes welcome-page-suggestion-text-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .welcome-page {
+    align-items: flex-start;
+  }
+
+  .welcome-page-content {
+    padding-top: 154px;
+  }
+
+  .welcome-page .welcome-page-title {
+    margin-bottom: 28px;
+    font-size: 28px;
+  }
+
+  .welcome-page-title-desktop {
+    display: none;
+  }
+
+  .welcome-page-title-mobile {
+    display: inline;
+  }
+
+  .welcome-page-suggestions {
+    padding-inline: 8px;
+  }
+}

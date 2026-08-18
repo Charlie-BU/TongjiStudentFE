@@ -17,6 +17,7 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 });
 
 vi.stubGlobal("ResizeObserver", ResizeObserverStub);
+vi.stubEnv("TEST_ENV", "true");
 
 Object.defineProperty(window, "matchMedia", {
   configurable: true,

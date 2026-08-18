@@ -1,0 +1,19 @@
+.login-reminder-modal .ant-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-reminder-modal-title-icon {
+  color: var(--ant-color-primary);
+  font-size: 22px;
+}
+
+.login-reminder-modal .ant-typography {
+  margin-bottom: 0;
+  white-space: pre-line;
+}
+
+.login-reminder-modal-message {
+  margin-block: 14px;
+}

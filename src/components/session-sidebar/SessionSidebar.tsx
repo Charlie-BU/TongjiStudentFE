@@ -29,6 +29,7 @@ import {
 const { Text, Title } = Typography;
 
 const TONGJI_OAUTH_AUTHORIZE_PATH = "/v1/tongji/oauth/authorize";
+const LOGIN_REMINDER_SEEN_KEY = "tongji-login-reminder-seen";
 
 type SessionSidebarProps = {
     createdSessions: SessionSummary[];
@@ -56,7 +57,9 @@ export function SessionSidebar({
     onOauthRedirect = (url) => window.location.assign(url),
     onPageReload = () => window.location.reload(),
 }: SessionSidebarProps) {
-    const [sessions, setSessions] = useState<SessionSummary[]>([]);
+    const [sessions, setSessions] = useState<SessionSummary[]>(
+        getAnonymousSessions,
+    );
     const [isLoading, setIsLoading] = useState(true);
     const [editingSession, setEditingSession] = useState<SessionSummary | null>(
         null,
@@ -69,6 +72,7 @@ export function SessionSidebar({
     };
     const logout = (): void => {
         window.localStorage.removeItem("tongji-access-token");
+        window.sessionStorage.removeItem(LOGIN_REMINDER_SEEN_KEY);
         onPageReload();
     };
     const userMenuItems: MenuProps["items"] = [
@@ -137,8 +141,6 @@ export function SessionSidebar({
 
     useEffect(() => {
         if (!userBasicInfo) {
-            // 未登录，从 localStorage 中获取匿名会话
-            setSessions(getAnonymousSessions());
             return;
         }
 
@@ -195,16 +197,18 @@ export function SessionSidebar({
                     onClick={onNewChat}
                     type="text"
                 >
-                    <Text strong>New Chat</Text>
+                    <Text strong> 新会话</Text>
                 </Button>
 
                 <section
                     className="session-recents"
                     aria-labelledby="recents-title"
                 >
-                    <Text id="recents-title" type="secondary">
-                        Recents
-                    </Text>
+                    {(isSessionListLoading || displayedSessions.length > 0) && (
+                        <Text id="recents-title" type="secondary">
+                            最近
+                        </Text>
+                    )}
                     <div className="session-list">
                         {isSessionListLoading ? (
                             <div

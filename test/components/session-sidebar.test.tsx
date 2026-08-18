@@ -33,10 +33,10 @@ describe("SessionSidebar", () => {
       ],
     });
 
-    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
+    const { container } = render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
     await screen.findByText("最新会话");
-    const sessions = screen.getAllByText(/会话/);
+    const sessions = [...container.querySelectorAll(".session-list > .ant-dropdown-trigger")];
     expect(sessions.map((session) => session.textContent)).toEqual([
       "最新会话",
       "较早会话",

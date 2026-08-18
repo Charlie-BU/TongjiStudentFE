@@ -245,9 +245,12 @@
 }
 
 .markdown-content .markdown-code-copy-button.ant-btn {
+  position: relative;
+  z-index: 1;
   width: 32px;
   height: 32px;
   color: var(--ant-color-text-secondary);
+  touch-action: manipulation;
 }
 
 .markdown-content .markdown-code-block {
