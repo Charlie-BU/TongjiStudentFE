@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BulbTwoTone } from "@ant-design/icons";
 import { Tag } from "antd";
 import type { ChatController } from "../../hooks/use-chat";
@@ -47,6 +47,18 @@ function getSuggestionGroup(suggestions: string[], offset: number): string[] {
     );
 }
 
+function shuffleArray<T>(items: T[]): T[] {
+    const shuffledItems = [...items];
+    for (let index = shuffledItems.length - 1; index > 0; index -= 1) {
+        const randomIndex = Math.floor(Math.random() * (index + 1));
+        [shuffledItems[index], shuffledItems[randomIndex]] = [
+            shuffledItems[randomIndex],
+            shuffledItems[index],
+        ];
+    }
+    return shuffledItems;
+}
+
 // WelcomePage 在新会话创建前提供与 ChatGPT 相似的居中输入体验。
 export function WelcomePage({
     chat,
@@ -58,14 +70,22 @@ export function WelcomePage({
         chat;
     const [suggestionPage, setSuggestionPage] = useState(0);
     const [isSuggestionFading, setIsSuggestionFading] = useState(false);
+    const publicSuggestions = useMemo(
+        () => shuffleArray(PUBLIC_SUGGESTIONS),
+        [],
+    );
+    const loginRequiredSuggestions = useMemo(
+        () => shuffleArray(LOGIN_REQUIRED_SUGGESTIONS),
+        [],
+    );
 
     useEffect(() => {
         let fadeTimer: number | undefined;
         const rotationTimer = window.setInterval(() => {
             setIsSuggestionFading(true);
             fadeTimer = window.setTimeout(() => {
-                setSuggestionPage((currentPage) =>
-                    (currentPage + 1) % SUGGESTION_PAGE_COUNT,
+                setSuggestionPage(
+                    (currentPage) => (currentPage + 1) % SUGGESTION_PAGE_COUNT,
                 );
                 setIsSuggestionFading(false);
             }, SUGGESTION_FADE_DURATION);
@@ -79,15 +99,18 @@ export function WelcomePage({
 
     const suggestionOffset = suggestionPage * SUGGESTIONS_PER_GROUP;
     const suggestions = [
-        ...getSuggestionGroup(PUBLIC_SUGGESTIONS, suggestionOffset).map(
+        ...getSuggestionGroup(publicSuggestions, suggestionOffset).map(
             (query) => ({ query, requiresLogin: false }),
         ),
-        ...getSuggestionGroup(LOGIN_REQUIRED_SUGGESTIONS, suggestionOffset).map(
+        ...getSuggestionGroup(loginRequiredSuggestions, suggestionOffset).map(
             (query) => ({ query, requiresLogin: true }),
         ),
     ];
 
-    const submitSuggestion = (suggestion: string, requiresLogin: boolean): void => {
+    const submitSuggestion = (
+        suggestion: string,
+        requiresLogin: boolean,
+    ): void => {
         if (requiresLogin && !isLoggedIn) {
             onLoginRequired();
             return;
@@ -123,7 +146,9 @@ export function WelcomePage({
                 <div
                     aria-label="推荐提问"
                     className={`welcome-page-suggestions${
-                        isSuggestionFading ? " welcome-page-suggestions-fading" : ""
+                        isSuggestionFading
+                            ? " welcome-page-suggestions-fading"
+                            : ""
                     }`}
                 >
                     {suggestions.map(({ query, requiresLogin }) => (
@@ -132,13 +157,17 @@ export function WelcomePage({
                             className="welcome-page-suggestion"
                             disabled={isStreaming}
                             key={`${suggestionPage}-${query}`}
-                            onClick={() => submitSuggestion(query, requiresLogin)}
+                            onClick={() =>
+                                submitSuggestion(query, requiresLogin)
+                            }
                             type="button"
                         >
                             <BulbTwoTone className="welcome-page-suggestion-icon" />
                             <span className="welcome-page-suggestion-text">
                                 {query}
-                                {requiresLogin ? <Tag color="geekblue">需登录</Tag> : null}
+                                {requiresLogin ? (
+                                    <Tag color="geekblue">需登录</Tag>
+                                ) : null}
                             </span>
                         </button>
                     ))}
