@@ -75,6 +75,11 @@
     text-align: left;
 }
 
+.session-new-chat-tooltip,
+.session-list-item-tooltip {
+    display: block;
+}
+
 .session-list-item-input.ant-input {
     display: block;
     height: 40px;
@@ -107,6 +112,11 @@
     min-width: 0;
     flex: 1;
     background: transparent;
+}
+
+.session-list-row .session-list-item-tooltip {
+    min-width: 0;
+    flex: 1;
 }
 
 .session-list-row .session-list-item-input.ant-input {
@@ -161,6 +171,7 @@
 }
 
 .session-sidebar-profile {
+    margin-top: 8px;
     min-width: 0;
 }
 

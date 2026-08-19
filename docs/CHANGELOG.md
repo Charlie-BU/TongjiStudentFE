@@ -1,3 +1,60 @@
+## CHANGELOG - 2026-08-19 14:56 - 增加限流重试并锁定生成中的会话切换
+
+### 撰写时间
+
+- 2026-08-19 14:56
+
+### Base Commit
+
+- 9d5761b781a416e8f8c0d2c6075418cd311dc250
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+聊天请求遇到服务端限流时，原来的 `run.failed` 会直接结束当前轮次，用户只能手工重新发送；与此同时，流式生成尚未结束时切换或新建会话，容易让用户误以为当前回答已经完成。
+
+这次把目标收敛为两件事：对明确标记为 HTTP `429` 的运行失败做有限次数的自动重试，并在这段生成生命周期内锁住会话切换入口。这里没有改变建会话、认证或 SSE 协议，只在 `useChat` 的事件投影与侧栏交互层加入可取消的保护。
+
+### 改动概览
+
+- `useChat` 读取 `run.failed` 的 `status_code/statusCode`；仅当值为 `429` 时，最多等待 3 秒后自动重试 3 次，超过上限后展示“模型请求次数超限，请稍后重试。”。
+- 抽出 `streamQuestion` 承担单次 SSE 消费，重试前清空本次尚未完成的回答与推理、完成已有活动，并写入当前重试进度；`waitForRateLimitRetry` 监听同一 `AbortSignal`，已取消时立即返回。
+- `SessionSidebar` 在存在 `streamingSessionId` 时禁用 New Chat 与非当前会话选择按钮，并通过 `Tooltip` 说明需要等待当前会话完成；当前会话及既有删除禁用逻辑保持原语义。
+- 新增回归测试：覆盖 429 的三次重试与最终失败、重试等待期间的停止生成、生成期间新建/切换会话无副作用及提示文案；测试统一在 `afterEach` 恢复 fake timer。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`tongjiStudentService.SessionMessagesPOST` 仍通过 XHR 下载进度提供 SSE 文本；`mapServerEvent` 将服务端 `run.failed` 映射为带可选状态码的内部事件。`App` 继续把 `useChat.isStreaming` 对应的 session id 传给 `SessionSidebar`。
+- 当前改动：`submitQuestion -> streamQuestion` 在一次流结束后判断是否收到 429。若需要重试，仍复用同一个 session、问题文本和 `AbortController`；等待阶段用户点击停止会触发同一 signal，使等待函数清理 timer 并让当前轮进入 `aborted` 状态。
+- 下游影响：非 429 的失败仍走原有通用失败文案；完成事件、工具活动、历史恢复、会话删除和路由选择的调用签名没有变化。侧栏只阻止流式期间的新建或跨会话切换，不改变认证用户和匿名会话的数据源。
+
+### 改动结果与业务影响
+
+在服务端明确返回 429 的边界下，前端会向用户展示等待重试进度，而不是立刻丢弃问题。用户仍可随时停止，停止后不会在计时器到期时发出额外请求。生成中会话的 New Chat 与其他会话按钮不可点击，减少状态切换造成的上下文误解。
+
+重试次数和等待时长目前是固定的 `3 × 3 秒`，没有引入指数退避、服务端 `Retry-After` 解析或跨标签页协调；这些能力需要服务端协议和产品策略共同确认后再扩展。
+
+### 验证结果
+
+- `./node_modules/.bin/vitest run test/components/chat-area.test.tsx test/components/session-sidebar.test.tsx`：2 个测试文件、22 个用例通过。
+- `./node_modules/.bin/vitest run`：8 个测试文件、45 个用例全部通过。
+- 本地 `tsc --noEmit -p tsconfig.test.json`、ESLint 与 `git diff --check`：通过。
+- `pnpm` 命令在当前无 TTY 环境下要求交互式清理并重建 `node_modules`，因此未自动执行该破坏性操作。直接调用本地 Vite 构建仍失败：`react-syntax-highlighter` 无法解析 `highlight.js/lib/languages/sql_more`；该依赖未在本次 diff 中变更，生产构建尚未完成验证。
+
+### 风险与待办
+
+- 自动重试只识别 SSE `run.failed` 携带的数值 `429`。若后端改为 HTTP 层直接返回错误、使用字符串状态码或提供 `Retry-After`，需要同步扩展适配与测试。
+- 固定间隔可能在持续限流时产生额外负载；后续应结合服务端配额、退避策略与可观测性数据决定是否改为指数退避。
+- 生成期间目前仍保留当前会话的操作菜单；应在真实浏览器中确认 Tooltip 在键盘和触控设备上的可发现性，并结合产品规则确认哪些菜单操作应一并禁用。
+- 构建依赖解析问题需要独立处理并重新执行 `pnpm build`；恢复前不能将本次变更标记为生产构建已通过。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): retry rate-limited requests safely`
+
 ## CHANGELOG - 2026-08-19 13:47 - 完善聊天消息元信息与会话操作入口
 
 ### 撰写时间

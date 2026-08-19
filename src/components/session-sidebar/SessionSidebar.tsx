@@ -15,6 +15,7 @@ import {
     Image,
     Input,
     Modal,
+    Tooltip,
     Typography,
     type MenuProps,
 } from "antd";
@@ -67,6 +68,9 @@ export function SessionSidebar({
     );
     const displayedSessions = mergeSessions([...createdSessions, ...sessions]);
     const isSessionListLoading = userBasicInfo !== null && isLoading;
+    const isSessionSwitchDisabled = streamingSessionId !== null;
+    const sessionSwitchDisabledMessage =
+        "当前会话正在工作中，请等待完成后再切换";
     const startOauth = (): void => {
         clearAnonymousSessions(); // 清除匿名会话
         onOauthRedirect(getTongjiOauthAuthorizeUrl());
@@ -190,16 +194,27 @@ export function SessionSidebar({
                     />
                     同济同学 2.0
                 </Title>
-                <Button
-                    aria-label="New Chat"
-                    block
-                    className="session-list-item session-new-chat-button"
-                    icon={<PlusOutlined style={{ fontSize: 14 }} />}
-                    onClick={onNewChat}
-                    type="text"
+                <Tooltip
+                    title={
+                        isSessionSwitchDisabled
+                            ? sessionSwitchDisabledMessage
+                            : undefined
+                    }
                 >
-                    <Text strong>新会话</Text>
-                </Button>
+                    <span className="session-new-chat-tooltip">
+                        <Button
+                            aria-label="New Chat"
+                            block
+                            className="session-list-item session-new-chat-button"
+                            disabled={isSessionSwitchDisabled}
+                            icon={<PlusOutlined style={{ fontSize: 14 }} />}
+                            onClick={onNewChat}
+                            type="text"
+                        >
+                            <Text strong>新会话</Text>
+                        </Button>
+                    </span>
+                </Tooltip>
 
                 <section
                     className="session-recents"
@@ -223,6 +238,8 @@ export function SessionSidebar({
                             displayedSessions.map((session) => {
                                 const isSelected =
                                     session.id === selectedSessionId;
+                                const isSessionButtonDisabled =
+                                    isSessionSwitchDisabled && !isSelected;
                                 const menuItems = userBasicInfo
                                     ? [
                                           {
@@ -289,23 +306,34 @@ export function SessionSidebar({
                                                 value={editingSession.name}
                                             />
                                         ) : (
-                                            <Button
-                                                block
-                                                className={`session-list-item${
-                                                    isSelected
-                                                        ? " session-list-item-selected"
-                                                        : ""
-                                                }`}
-                                                onClick={() =>
-                                                    onSessionSelect(session.id)
+                                            <Tooltip
+                                                title={
+                                                    isSessionButtonDisabled
+                                                        ? sessionSwitchDisabledMessage
+                                                        : undefined
                                                 }
-                                                title={session.name}
-                                                type="text"
                                             >
-                                                <Text ellipsis strong>
-                                                    {session.name}
-                                                </Text>
-                                            </Button>
+                                                <span className="session-list-item-tooltip">
+                                                    <Button
+                                                        block
+                                                        className={`session-list-item${
+                                                            isSelected
+                                                                ? " session-list-item-selected"
+                                                                : ""
+                                                        }`}
+                                                        disabled={isSessionButtonDisabled}
+                                                        onClick={() =>
+                                                            onSessionSelect(session.id)
+                                                        }
+                                                        title={session.name}
+                                                        type="text"
+                                                    >
+                                                        <Text ellipsis strong>
+                                                            {session.name}
+                                                        </Text>
+                                                    </Button>
+                                                </span>
+                                            </Tooltip>
                                         )}
                                         {userBasicInfo ? (
                                             <Dropdown

@@ -1,4 +1,10 @@
-import { useCallback, useRef, useState } from "react";
+import {
+    useCallback,
+    useRef,
+    useState,
+    type Dispatch,
+    type SetStateAction,
+} from "react";
 import type { AxiosProgressEvent, AxiosRequestConfig } from "axios";
 import { tongjiStudentService } from "../services/tongji-student";
 import { updateAnonymousSessionLastActiveAt } from "../utils/anonymous-session";
@@ -30,7 +36,7 @@ type ChatStreamEvent =
     | { type: "tool_completed"; id: string; label: string; durationMs?: number }
     | { type: "delta"; text: string }
     | { type: "completed"; durationMs?: number }
-    | { type: "failed" };
+    | { type: "failed"; statusCode?: number };
 
 type ServerEvent = {
     type: string;
@@ -43,6 +49,9 @@ export type SessionSummary = {
     lastActiveAt: string;
     name: string;
 };
+
+const MAX_RATE_LIMIT_RETRIES = 3;
+const RATE_LIMIT_RETRY_DELAY_MS = 3000;
 
 type UseChatOptions = {
     isAnonymous?: boolean;
@@ -96,65 +105,64 @@ export function useChat({
 
         try {
             const sessionId = await getOrCreateSessionId(isAnonymous);
+            let retryCount = 0;
 
-            let responseTextLength = 0;
-            let sseBuffer = "";
-            let lastSequence = 0;
-            let receivedTerminalEvent = false;
-
-            const consumeSseProgress = (progress: AxiosProgressEvent): void => {
-                const responseText = getResponseText(progress);
-                if (responseText === undefined) {
-                    return;
+            while (true) {
+                const isRateLimited = await streamQuestion(
+                    question,
+                    sessionId,
+                    turnId,
+                    controller,
+                    setTurns,
+                );
+                if (!isRateLimited) {
+                    break;
                 }
 
-                const nextChunk = responseText.slice(responseTextLength);
-                responseTextLength = responseText.length;
-                sseBuffer += nextChunk;
-                const frames = takeSseFrames(sseBuffer);
-                sseBuffer = frames.remainder;
-
-                for (const serverEvent of frames.events) {
-                    if (
-                        typeof serverEvent.seq === "number" &&
-                        serverEvent.seq <= lastSequence
-                    ) {
-                        continue;
-                    }
-                    if (typeof serverEvent.seq === "number") {
-                        lastSequence = serverEvent.seq;
-                    }
-
-                    const event = mapServerEvent(serverEvent);
-                    if (!event) {
-                        continue;
-                    }
-                    receivedTerminalEvent ||= isTerminalEvent(event);
+                if (retryCount === MAX_RATE_LIMIT_RETRIES) {
                     setTurns((currentTurns) =>
                         currentTurns.map((turn) =>
-                            updateTurn(turn, turnId, event),
+                            turn.id === turnId
+                                ? {
+                                      ...turn,
+                                      error: "模型请求次数超限，请稍后重试。",
+                                      state: "failed",
+                                  }
+                                : turn,
                         ),
                     );
+                    break;
                 }
-            };
 
-            await tongjiStudentService.SessionMessagesPOST(
-                { message: question, session_id: sessionId },
-                {
-                    adapter: "xhr",
-                    headers: { Accept: "text/event-stream" },
-                    onDownloadProgress: consumeSseProgress,
-                    responseType: "text",
-                    signal: controller.signal,
-                } satisfies AxiosRequestConfig,
-            );
-
-            if (!controller.signal.aborted && !receivedTerminalEvent) {
+                retryCount += 1;
                 setTurns((currentTurns) =>
                     currentTurns.map((turn) =>
-                        updateTurn(turn, turnId, { type: "completed" }),
+                        turn.id === turnId
+                            ? {
+                                  ...turn,
+                                  activities: [
+                                      ...turn.activities.map((activity) => ({
+                                          ...activity,
+                                          state: "completed" as const,
+                                      })),
+                                      {
+                                          id: `rate-limit-retry-${retryCount}`,
+                                          label: `模型请求频率受限，3 秒后自动重试（${retryCount}/${MAX_RATE_LIMIT_RETRIES}）`,
+                                          state: "running" as const,
+                                      },
+                                  ],
+                                  answer: "",
+                                  error: undefined,
+                                  reasoning: "",
+                                  state: "streaming",
+                              }
+                            : turn,
                     ),
                 );
+
+                if (!(await waitForRateLimitRetry(controller.signal))) {
+                    throw new DOMException("已停止生成", "AbortError");
+                }
             }
         } catch (error) {
             setTurns((currentTurns) =>
@@ -275,6 +283,100 @@ export function useChat({
 
 export type ChatController = ReturnType<typeof useChat>;
 
+async function streamQuestion(
+    question: string,
+    sessionId: string,
+    turnId: string,
+    controller: AbortController,
+    setTurns: Dispatch<SetStateAction<ChatTurn[]>>,
+): Promise<boolean> {
+    let responseTextLength = 0;
+    let sseBuffer = "";
+    let lastSequence = 0;
+    let receivedTerminalEvent = false;
+    let isRateLimited = false;
+
+    const consumeSseProgress = (progress: AxiosProgressEvent): void => {
+        const responseText = getResponseText(progress);
+        if (responseText === undefined) {
+            return;
+        }
+
+        const nextChunk = responseText.slice(responseTextLength);
+        responseTextLength = responseText.length;
+        sseBuffer += nextChunk;
+        const frames = takeSseFrames(sseBuffer);
+        sseBuffer = frames.remainder;
+
+        for (const serverEvent of frames.events) {
+            if (
+                typeof serverEvent.seq === "number" &&
+                serverEvent.seq <= lastSequence
+            ) {
+                continue;
+            }
+            if (typeof serverEvent.seq === "number") {
+                lastSequence = serverEvent.seq;
+            }
+
+            const event = mapServerEvent(serverEvent);
+            if (!event) {
+                continue;
+            }
+
+            receivedTerminalEvent ||= isTerminalEvent(event);
+            if (event.type === "failed" && event.statusCode === 429) {
+                isRateLimited = true;
+                continue;
+            }
+
+            setTurns((currentTurns) =>
+                currentTurns.map((turn) => updateTurn(turn, turnId, event)),
+            );
+        }
+    };
+
+    await tongjiStudentService.SessionMessagesPOST(
+        { message: question, session_id: sessionId },
+        {
+            adapter: "xhr",
+            headers: { Accept: "text/event-stream" },
+            onDownloadProgress: consumeSseProgress,
+            responseType: "text",
+            signal: controller.signal,
+        } satisfies AxiosRequestConfig,
+    );
+
+    if (!controller.signal.aborted && !receivedTerminalEvent) {
+        setTurns((currentTurns) =>
+            currentTurns.map((turn) =>
+                updateTurn(turn, turnId, { type: "completed" }),
+            ),
+        );
+    }
+
+    return isRateLimited;
+}
+
+function waitForRateLimitRetry(signal: AbortSignal): Promise<boolean> {
+    if (signal.aborted) {
+        return Promise.resolve(false);
+    }
+
+    return new Promise((resolve) => {
+        const retryTimer = window.setTimeout(() => {
+            signal.removeEventListener("abort", handleAbort);
+            resolve(true);
+        }, RATE_LIMIT_RETRY_DELAY_MS);
+        const handleAbort = (): void => {
+            window.clearTimeout(retryTimer);
+            resolve(false);
+        };
+
+        signal.addEventListener("abort", handleAbort, { once: true });
+    });
+}
+
 export function takeSseFrames(input: string): {
     events: ServerEvent[];
     remainder: string;
@@ -375,7 +477,13 @@ function mapServerEvent(event: ServerEvent): ChatStreamEvent | null {
                 ]),
             };
         case "run.failed":
-            return { type: "failed" };
+            return {
+                type: "failed",
+                statusCode: readOptionalNumber(data, [
+                    "status_code",
+                    "statusCode",
+                ]),
+            };
         default:
             return null;
     }

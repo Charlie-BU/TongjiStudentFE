@@ -112,6 +112,42 @@ describe("SessionSidebar", () => {
     expect(tongjiStudentService.SessionDeleteDELETE).not.toHaveBeenCalled();
   });
 
+  it("应在生成期间禁用新会话和其他会话切换", async () => {
+    const user = userEvent.setup();
+    const onNewChat = vi.fn();
+    const onSessionSelect = vi.fn();
+    tongjiStudentService.SessionGET.mockResolvedValue({
+      sessions: [
+        { id: "session-current", name: "当前会话", last_active_at: "2026-08-10T10:00:00Z" },
+        { id: "session-other", name: "其他会话", last_active_at: "2026-08-09T10:00:00Z" },
+      ],
+    });
+
+    render(
+      <SessionSidebar
+        createdSessions={[]}
+        onNewChat={onNewChat}
+        onSessionSelect={onSessionSelect}
+        selectedSessionId="session-current"
+        streamingSessionId="session-current"
+        userBasicInfo={userBasicInfo}
+      />,
+    );
+
+    const newChatButton = screen.getByRole("button", { name: "New Chat" });
+    const otherSessionButton = await screen.findByRole("button", { name: "其他会话" });
+    expect(newChatButton).toBeDisabled();
+    expect(otherSessionButton).toBeDisabled();
+
+    await user.click(newChatButton);
+    await user.click(otherSessionButton);
+    expect(onNewChat).not.toHaveBeenCalled();
+    expect(onSessionSelect).not.toHaveBeenCalled();
+
+    await user.hover(otherSessionButton.parentElement!);
+    expect(await screen.findByText("当前会话正在工作中，请等待完成后再切换")).toBeInTheDocument();
+  });
+
   it("应隐藏匿名会话的重命名和删除菜单", async () => {
     const user = userEvent.setup();
     const onSessionSelect = vi.fn();

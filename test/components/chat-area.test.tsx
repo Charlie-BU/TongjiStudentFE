@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const tongjiStudentService = vi.hoisted(() => ({
   SessionMessagesPOST: vi.fn(),
@@ -22,6 +22,10 @@ function ChatAreaHarness() {
 }
 
 describe("ChatArea", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     tongjiStudentService.SessionPOST.mockReset();
     tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "session-1", persistence: "ephemeral" });
@@ -253,6 +257,60 @@ describe("ChatArea", () => {
     expect(screen.queryByText("数据库连接串校验失败")).not.toBeInTheDocument();
   });
 
+  it("应在模型请求频率受限时每隔 3 秒自动重试，三次后展示专用提示", async () => {
+    vi.useFakeTimers();
+    mockSseEvents([{ type: "failed", statusCode: 429 }]);
+
+    render(<ChatAreaHarness />);
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("输入校园问题"), {
+        target: { value: "查询校园卡" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "发送问题" }));
+      await Promise.resolve();
+    });
+
+    for (let retry = 1; retry <= 3; retry += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3_000);
+      });
+      expect(tongjiStudentService.SessionMessagesPOST).toHaveBeenCalledTimes(
+        retry + 1,
+      );
+    }
+
+    expect(
+      screen.getByText("模型请求次数超限，请稍后重试。"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("生成失败，请稍后重试。")).not.toBeInTheDocument();
+  });
+
+  it("应在频率受限的重试等待期间停止生成", async () => {
+    vi.useFakeTimers();
+    mockSseEvents([{ type: "failed", statusCode: 429 }]);
+
+    render(<ChatAreaHarness />);
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("输入校园问题"), {
+        target: { value: "查询校园卡" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "发送问题" }));
+      await Promise.resolve();
+    });
+
+    expect(tongjiStudentService.SessionMessagesPOST).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "停止生成" }));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3_000);
+    });
+
+    expect(tongjiStudentService.SessionMessagesPOST).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("本轮回答已停止。")).toBeInTheDocument();
+  });
+
   it("应从发送开始实时计时，并以 run.completed 的最终耗时定格", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-10T12:00:00Z"));
@@ -293,7 +351,6 @@ describe("ChatArea", () => {
       await Promise.resolve();
     });
     expect(screen.getByText("已工作 1 分")).toBeInTheDocument();
-    vi.useRealTimers();
   });
 });
 
@@ -303,7 +360,7 @@ type TestStreamEvent =
   | { type: "tool_started"; id: string; label: string }
   | { type: "delta"; text: string }
   | { type: "completed"; durationMs?: number }
-  | { type: "failed" };
+  | { type: "failed"; statusCode?: number };
 
 type StreamOptions = {
   onDownloadProgress?: (progress: { event: { target: { responseText: string } } }) => void;
@@ -343,6 +400,6 @@ function toServerEvent(event: TestStreamEvent): { type: string; data: Record<str
     case "completed":
       return { type: "run.completed", data: { duration_ms: event.durationMs } };
     case "failed":
-      return { type: "run.failed", data: {} };
+      return { type: "run.failed", data: { status_code: event.statusCode } };
   }
 }
