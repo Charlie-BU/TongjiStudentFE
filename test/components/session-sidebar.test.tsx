@@ -36,7 +36,7 @@ describe("SessionSidebar", () => {
     const { container } = render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
     await screen.findByText("最新会话");
-    const sessions = [...container.querySelectorAll(".session-list > .ant-dropdown-trigger")];
+    const sessions = [...container.querySelectorAll(".session-list > .session-list-row")];
     expect(sessions.map((session) => session.textContent)).toEqual([
       "最新会话",
       "较早会话",
@@ -70,7 +70,7 @@ describe("SessionSidebar", () => {
     expect(onSessionSelect).toHaveBeenCalledWith("session-2");
   });
 
-  it("应通过右键菜单重命名会话", async () => {
+  it("应通过三点菜单重命名会话", async () => {
     const user = userEvent.setup();
     tongjiStudentService.SessionGET.mockResolvedValue({
       sessions: [
@@ -80,8 +80,7 @@ describe("SessionSidebar", () => {
     tongjiStudentService.SessionRenamePOST.mockResolvedValue({ name: "新会话名" });
     render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
-    const sessionButton = await screen.findByRole("button", { name: "原会话名" });
-    fireEvent.contextMenu(sessionButton);
+    await user.click(await screen.findByRole("button", { name: "操作会话 原会话名" }));
     await user.click(await screen.findByText("重命名"));
     const renameInput = screen.getByRole("textbox", { name: "重命名 原会话名" });
     await user.clear(renameInput);
@@ -105,8 +104,8 @@ describe("SessionSidebar", () => {
 
     render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId="session-4" streamingSessionId="session-4" userBasicInfo={userBasicInfo} />);
 
-    fireEvent.contextMenu(await screen.findByRole("button", { name: "生成中的会话" }));
-    const deleteItem = (await screen.findByText("删除")).closest('[role="menuitem"]');
+    await user.click(await screen.findByRole("button", { name: "操作会话 生成中的会话" }));
+    const deleteItem = (await screen.findByText("删除会话")).closest('[role="menuitem"]');
     expect(deleteItem).toHaveAttribute("aria-disabled", "true");
     expect(deleteItem).toHaveAttribute("title", "正在工作中，请等待工作完成后删除");
     await user.click(deleteItem!);
@@ -147,8 +146,8 @@ describe("SessionSidebar", () => {
 
     render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionDeleted={onSessionDeleted} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
 
-    fireEvent.contextMenu(await screen.findByRole("button", { name: "待删除会话" }));
-    await user.click(await screen.findByText("删除"));
+    await user.click(await screen.findByRole("button", { name: "操作会话 待删除会话" }));
+    await user.click(await screen.findByText("删除会话"));
     expect((await screen.findAllByText("确认删除会话？")).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: /^删\s*除$/ }));
 

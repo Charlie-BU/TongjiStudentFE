@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import {
     EditOutlined,
     DeleteOutlined,
+    EllipsisOutlined,
     LoadingOutlined,
     LogoutOutlined,
     SwapOutlined,
     UserOutlined,
+    PlusOutlined,
 } from "@ant-design/icons";
 import {
     Button,
@@ -57,9 +59,8 @@ export function SessionSidebar({
     onOauthRedirect = (url) => window.location.assign(url),
     onPageReload = () => window.location.reload(),
 }: SessionSidebarProps) {
-    const [sessions, setSessions] = useState<SessionSummary[]>(
-        getAnonymousSessions,
-    );
+    const [sessions, setSessions] =
+        useState<SessionSummary[]>(getAnonymousSessions);
     const [isLoading, setIsLoading] = useState(true);
     const [editingSession, setEditingSession] = useState<SessionSummary | null>(
         null,
@@ -193,11 +194,11 @@ export function SessionSidebar({
                     aria-label="New Chat"
                     block
                     className="session-list-item session-new-chat-button"
-                    icon={<EditOutlined style={{ fontSize: 14 }} />}
+                    icon={<PlusOutlined style={{ fontSize: 14 }} />}
                     onClick={onNewChat}
                     type="text"
                 >
-                    <Text strong> 新会话</Text>
+                    <Text strong>新会话</Text>
                 </Button>
 
                 <section
@@ -219,92 +220,113 @@ export function SessionSidebar({
                                 <LoadingOutlined />
                             </div>
                         ) : (
-                            displayedSessions.map((session) => (
-                                <Dropdown
-                                    key={session.id}
-                                    menu={{
-                                        items: userBasicInfo
-                                            ? [
-                                                  {
-                                                      icon: <EditOutlined />,
-                                                      key: "rename",
-                                                      label: "重命名",
-                                                      onClick: () =>
-                                                          setEditingSession(
-                                                              session,
-                                                          ),
-                                                  },
-                                                  {
-                                                      disabled:
-                                                          session.id ===
-                                                          streamingSessionId,
-                                                      danger: true,
-                                                      icon: <DeleteOutlined />,
-                                                      key: "delete",
-                                                      label: "删除",
-                                                      onClick: () =>
-                                                          deleteSession(
-                                                              session,
-                                                          ),
-                                                      title:
-                                                          session.id ===
-                                                          streamingSessionId
-                                                              ? "正在工作中，请等待工作完成后删除"
-                                                              : undefined,
-                                                  },
-                                              ]
-                                            : [],
-                                    }}
-                                    trigger={
-                                        userBasicInfo ? ["contextMenu"] : []
-                                    }
-                                >
-                                    {editingSession?.id === session.id ? (
-                                        <Input
-                                            id={session.id}
-                                            aria-label={`重命名 ${session.name}`}
-                                            autoFocus
-                                            className="session-list-item-input"
-                                            onBlur={() =>
-                                                void renameSession(session)
-                                            }
-                                            onChange={(event) =>
-                                                setEditingSession((current) =>
-                                                    current?.id === session.id
-                                                        ? {
-                                                              ...current,
-                                                              name: event.target
-                                                                  .value,
-                                                          }
-                                                        : current,
-                                                )
-                                            }
-                                            onPressEnter={(event) =>
-                                                event.currentTarget.blur()
-                                            }
-                                            value={editingSession.name}
-                                        />
-                                    ) : (
-                                        <Button
-                                            block
-                                            className={`session-list-item${
-                                                session.id === selectedSessionId
-                                                    ? " session-list-item-selected"
-                                                    : ""
-                                            }`}
-                                            onClick={() =>
-                                                onSessionSelect(session.id)
-                                            }
-                                            title={session.name}
-                                            type="text"
-                                        >
-                                            <Text ellipsis strong>
-                                                {session.name}
-                                            </Text>
-                                        </Button>
-                                    )}
-                                </Dropdown>
-                            ))
+                            displayedSessions.map((session) => {
+                                const isSelected =
+                                    session.id === selectedSessionId;
+                                const menuItems = userBasicInfo
+                                    ? [
+                                          {
+                                              icon: <EditOutlined />,
+                                              key: "rename",
+                                              label: "重命名",
+                                              onClick: () =>
+                                                  setEditingSession(session),
+                                          },
+                                          {
+                                              disabled:
+                                                  session.id ===
+                                                  streamingSessionId,
+                                              danger: true,
+                                              icon: <DeleteOutlined />,
+                                              key: "delete",
+                                              label: "删除会话",
+                                              onClick: () =>
+                                                  deleteSession(session),
+                                              title:
+                                                  session.id ===
+                                                  streamingSessionId
+                                                      ? "正在工作中，请等待工作完成后删除"
+                                                      : undefined,
+                                          },
+                                      ]
+                                    : [];
+
+                                return (
+                                    <div
+                                        className={`session-list-row${
+                                            isSelected
+                                                ? " session-list-row-selected"
+                                                : ""
+                                        }`}
+                                        key={session.id}
+                                    >
+                                        {editingSession?.id === session.id ? (
+                                            <Input
+                                                id={session.id}
+                                                aria-label={`重命名 ${session.name}`}
+                                                autoFocus
+                                                className="session-list-item-input"
+                                                onBlur={() =>
+                                                    void renameSession(session)
+                                                }
+                                                onChange={(event) =>
+                                                    setEditingSession(
+                                                        (current) =>
+                                                            current?.id ===
+                                                            session.id
+                                                                ? {
+                                                                      ...current,
+                                                                      name: event
+                                                                          .target
+                                                                          .value,
+                                                                  }
+                                                                : current,
+                                                    )
+                                                }
+                                                onPressEnter={(event) =>
+                                                    event.currentTarget.blur()
+                                                }
+                                                value={editingSession.name}
+                                            />
+                                        ) : (
+                                            <Button
+                                                block
+                                                className={`session-list-item${
+                                                    isSelected
+                                                        ? " session-list-item-selected"
+                                                        : ""
+                                                }`}
+                                                onClick={() =>
+                                                    onSessionSelect(session.id)
+                                                }
+                                                title={session.name}
+                                                type="text"
+                                            >
+                                                <Text ellipsis strong>
+                                                    {session.name}
+                                                </Text>
+                                            </Button>
+                                        )}
+                                        {userBasicInfo ? (
+                                            <Dropdown
+                                                menu={{ items: menuItems }}
+                                                placement="bottomLeft"
+                                                trigger={["click"]}
+                                            >
+                                                <Button
+                                                    aria-label={`操作会话 ${session.name}`}
+                                                    className="session-list-item-more"
+                                                    icon={<EllipsisOutlined />}
+                                                    onClick={(event) =>
+                                                        event.stopPropagation()
+                                                    }
+                                                    type="text"
+                                                />
+                                            </Dropdown>
+                                        ) : null}
+                                    </div>
+                                );
+                            })
                         )}
                     </div>
                 </section>

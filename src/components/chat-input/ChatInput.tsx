@@ -4,7 +4,7 @@ import {
   PaperClipOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Input } from "antd";
+import { Button, Card, Input, Tooltip } from "antd";
 import "./ChatInput.css";
 
 const { TextArea } = Input;
@@ -58,24 +58,28 @@ export function ChatInput({
         />
         <div className="chat-input-toolbar">
           <div className="chat-input-tools">
-            <Button
-              aria-label="提及内容"
-              className="chat-input-tool-button"
-              color="default"
-              icon={<UserOutlined />}
-              onClick={reservedButtonClick}
-              shape="circle"
-              variant="outlined"
-            />
-            <Button
-              aria-label="添加附件"
-              className="chat-input-tool-button"
-              color="default"
-              icon={<PaperClipOutlined />}
-              onClick={reservedButtonClick}
-              shape="circle"
-              variant="outlined"
-            />
+            <Tooltip title="敬请期待" arrow={false}>
+              <Button
+                aria-label="提及内容"
+                className="chat-input-tool-button"
+                color="default"
+                icon={<UserOutlined />}
+                onClick={reservedButtonClick}
+                shape="circle"
+                variant="outlined"
+              />
+            </Tooltip>
+            <Tooltip title="敬请期待" arrow={false}>
+              <Button
+                aria-label="添加附件"
+                className="chat-input-tool-button"
+                color="default"
+                icon={<PaperClipOutlined />}
+                onClick={reservedButtonClick}
+                shape="circle"
+                variant="outlined"
+              />
+            </Tooltip>
           </div>
           {disabled ? (
             <Button

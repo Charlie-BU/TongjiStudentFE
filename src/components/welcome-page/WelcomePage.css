@@ -81,6 +81,8 @@
 }
 
 .welcome-page-suggestion-text {
+  display: inline-flex;
+  align-items: center;
   animation: welcome-page-suggestion-text-enter 280ms ease-out both;
   transition: opacity 280ms ease-in, transform 280ms ease-in;
 }

@@ -5,7 +5,8 @@ import {
     useState,
     type CSSProperties,
 } from "react";
-import { CheckOutlined, CodeOutlined, CopyOutlined, SearchOutlined } from "@ant-design/icons";
+import { IconCode, IconCopy } from "@arco-design/web-react/icon";
+import { CheckOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Collapse, Image, Typography } from "antd";
 import "katex/dist/katex.min.css";
 import ReactMarkdown, { type Components } from "react-markdown";
@@ -104,16 +105,8 @@ function MarkdownCodeBlock({
     }, []);
 
     const copyCode = async (): Promise<void> => {
-        try {
-            if (navigator.clipboard) {
-                await navigator.clipboard.writeText(code);
-            } else if (!copyTextWithSelection(code)) {
-                return;
-            }
-        } catch {
-            if (!copyTextWithSelection(code)) {
-                return;
-            }
+        if (!(await copyText(code))) {
+            return;
         }
 
         window.clearTimeout(resetCopyStateRef.current);
@@ -125,13 +118,13 @@ function MarkdownCodeBlock({
         <div className="markdown-code-wrapper">
             <div className="markdown-code-header">
                 <span className="markdown-code-language">
-                    <CodeOutlined aria-hidden="true" />
+                    <IconCode aria-hidden="true" />
                     {formatCodeLanguage(language)}
                 </span>
                 <Button
                     aria-label={isCopied ? "已复制代码" : "复制代码"}
                     className="markdown-code-copy-button"
-                    icon={isCopied ? <CheckOutlined /> : <CopyOutlined />}
+                    icon={isCopied ? <CheckOutlined /> : <IconCopy />}
                     onClick={() => void copyCode()}
                     type="text"
                 />
@@ -155,6 +148,113 @@ function MarkdownCodeBlock({
     );
 }
 
+function UserMessage({ question, startedAt }: Pick<ChatTurn, "question" | "startedAt">) {
+    return (
+        <div className="user-message-wrapper">
+            <div className="message user-message">
+                <Text>{question}</Text>
+            </div>
+            <MessageCopyMeta
+                content={question}
+                copiedLabel="问题"
+                startedAt={startedAt}
+                className="user-message-meta"
+            />
+        </div>
+    );
+}
+
+function AssistantMessage({ answer, startedAt }: Pick<ChatTurn, "answer" | "startedAt">) {
+    return (
+        <div className="assistant-message-wrapper">
+            <div className="message assistant-message">
+                <div className="markdown-content">
+                    <ReactMarkdown
+                        components={markdownComponents}
+                        rehypePlugins={markdownRehypePlugins}
+                        remarkPlugins={markdownRemarkPlugins}
+                    >
+                        {answer}
+                    </ReactMarkdown>
+                </div>
+            </div>
+            <MessageCopyMeta
+                copyFirst
+                content={answer}
+                copiedLabel="回答"
+                startedAt={startedAt}
+                className="assistant-message-meta"
+            />
+        </div>
+    );
+}
+
+function MessageCopyMeta({
+    className,
+    copyFirst = false,
+    content,
+    copiedLabel,
+    startedAt,
+}: {
+    className: string;
+    copyFirst?: boolean;
+    content: string;
+    copiedLabel: string;
+    startedAt: number;
+}) {
+    const [isCopied, setIsCopied] = useState(false);
+    const resetCopyStateRef = useRef<number | undefined>(undefined);
+
+    useEffect(() => {
+        return () => window.clearTimeout(resetCopyStateRef.current);
+    }, []);
+
+    const copyMessage = async (): Promise<void> => {
+        if (!(await copyText(content))) {
+            return;
+        }
+
+        window.clearTimeout(resetCopyStateRef.current);
+        setIsCopied(true);
+        resetCopyStateRef.current = window.setTimeout(() => setIsCopied(false), 1600);
+    };
+
+    return (
+        <div className={`message-copy-meta ${className}`}>
+            {copyFirst ? null : (
+                <time dateTime={new Date(startedAt).toISOString()}>
+                    {formatMessageTime(startedAt)}
+                </time>
+            )}
+            <Button
+                aria-label={isCopied ? `已复制${copiedLabel}` : `复制${copiedLabel}`}
+                className="message-copy-button"
+                icon={isCopied ? <CheckOutlined /> : <IconCopy />}
+                onClick={() => void copyMessage()}
+                type="text"
+            />
+            {copyFirst ? (
+                <time dateTime={new Date(startedAt).toISOString()}>
+                    {formatMessageTime(startedAt)}
+                </time>
+            ) : null}
+        </div>
+    );
+}
+
+async function copyText(text: string): Promise<boolean> {
+    try {
+        if (navigator.clipboard) {
+            await navigator.clipboard.writeText(text);
+            return true;
+        }
+    } catch {
+        // Clipboard API 在部分移动浏览器或非安全上下文中可能不可用，继续使用回退方案。
+    }
+
+    return copyTextWithSelection(text);
+}
+
 function copyTextWithSelection(text: string): boolean {
     if (typeof document.execCommand !== "function") {
         return false;
@@ -174,6 +274,30 @@ function copyTextWithSelection(text: string): boolean {
     } finally {
         textarea.remove();
     }
+}
+
+function formatMessageTime(timestamp: number): string {
+    const messageDate = new Date(timestamp);
+    const today = new Date();
+    const time = messageDate.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+    });
+
+    const isToday =
+        messageDate.getFullYear() === today.getFullYear() &&
+        messageDate.getMonth() === today.getMonth() &&
+        messageDate.getDate() === today.getDate();
+    if (isToday) {
+        return time;
+    }
+
+    const date = [
+        messageDate.getFullYear(),
+        String(messageDate.getMonth() + 1).padStart(2, "0"),
+        String(messageDate.getDate()).padStart(2, "0"),
+    ].join("/");
+    return `${date} ${time}`;
 }
 
 function formatCodeLanguage(language?: string): string {
@@ -273,9 +397,10 @@ export function ChatArea({ chat }: ChatAreaProps) {
                     <div className="conversation-list">
                         {turns.map((turn) => (
                             <article key={turn.id} className="chat-turn">
-                                <div className="message user-message">
-                                    <Text>{turn.question}</Text>
-                                </div>
+                                <UserMessage
+                                    question={turn.question}
+                                    startedAt={turn.startedAt}
+                                />
                                 <div className="assistant-section">
                                     <AgentActivity
                                         key={`${turn.id}-${turn.state}`}
@@ -287,19 +412,12 @@ export function ChatArea({ chat }: ChatAreaProps) {
                                         }
                                         turn={turn}
                                     />
-                                    <div className="message assistant-message">
-                                        {turn.answer ? (
-                                            <div className="markdown-content">
-                                            <ReactMarkdown
-                                                components={markdownComponents}
-                                                rehypePlugins={markdownRehypePlugins}
-                                                remarkPlugins={markdownRemarkPlugins}
-                                            >
-                                                {turn.answer}
-                                            </ReactMarkdown>
-                                            </div>
-                                        ) : null}
-                                    </div>
+                                    {turn.answer ? (
+                                        <AssistantMessage
+                                            answer={turn.answer}
+                                            startedAt={turn.startedAt}
+                                        />
+                                    ) : null}
                                 </div>
                             </article>
                         ))}

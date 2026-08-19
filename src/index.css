@@ -21,6 +21,11 @@ body,
     box-sizing: border-box;
 }
 
+.arco-icon {
+    width: calc(1em + 1px);
+    height: calc(1em + 1px);
+}
+
 body {
     min-width: 320px;
     margin: 0;

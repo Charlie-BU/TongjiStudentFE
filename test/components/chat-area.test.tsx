@@ -133,6 +133,67 @@ describe("ChatArea", () => {
     expect(screen.getByRole("button", { name: "已复制代码" })).toBeInTheDocument();
   });
 
+  it("应复制问题和回答，并为它们展示发送时间", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    mockSseEvents([
+      { type: "delta", text: "这是测试回答。" },
+      { type: "completed" },
+    ]);
+
+    const { container } = render(<ChatAreaHarness />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "这是测试问题。");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+
+    expect(await screen.findByText("这是测试回答。")).toBeInTheDocument();
+    const timestamps = container.querySelectorAll("time");
+    expect(timestamps).toHaveLength(2);
+    expect([...timestamps].map(({ dateTime }) => dateTime)).toEqual([
+      expect.any(String),
+      expect.any(String),
+    ]);
+
+    await user.click(screen.getByRole("button", { name: "复制问题" }));
+    expect(writeText).toHaveBeenLastCalledWith("这是测试问题。");
+    expect(screen.getByRole("button", { name: "已复制问题" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "复制回答" }));
+    expect(writeText).toHaveBeenLastCalledWith("这是测试回答。");
+    expect(screen.getByRole("button", { name: "已复制回答" })).toBeInTheDocument();
+  });
+
+  it("应在 Clipboard API 失败时回退到选择复制", async () => {
+    const user = userEvent.setup();
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand,
+    });
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error("clipboard unavailable")) },
+    });
+    mockSseEvents([
+      { type: "delta", text: "用于回退复制的回答。" },
+      { type: "completed" },
+    ]);
+
+    render(<ChatAreaHarness />);
+
+    await user.type(screen.getByLabelText("输入校园问题"), "用于回退复制的问题。");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+    await screen.findByText("用于回退复制的回答。");
+    await user.click(screen.getByRole("button", { name: "复制问题" }));
+
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(screen.getByRole("button", { name: "已复制问题" })).toBeInTheDocument();
+  });
+
   it("应在发送和流式更新时滚动到输入框上方的对话末尾", async () => {
     const user = userEvent.setup();
     mockSseEvents([

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BulbOutlined } from "@ant-design/icons";
+import { BulbTwoTone } from "@ant-design/icons";
 import { Tag } from "antd";
 import type { ChatController } from "../../hooks/use-chat";
 import { ChatInput } from "../chat-input/ChatInput";
@@ -18,7 +18,7 @@ const PUBLIC_SUGGESTIONS = [
     "本科生怎么选课？入口在哪？",
     "四平路校区有什么食堂？分别有什么特色？营业时间是什么？",
     "高等数学课程哪些老师评分比较好？",
-    "沈坚老师评价怎么样？",
+    "沈坚老师评价怎么样？学生们都是怎么讲的？",
     "下学期什么时候开学、校历怎么安排？",
 ];
 
@@ -135,10 +135,10 @@ export function WelcomePage({
                             onClick={() => submitSuggestion(query, requiresLogin)}
                             type="button"
                         >
-                            <BulbOutlined className="welcome-page-suggestion-icon" />
+                            <BulbTwoTone className="welcome-page-suggestion-icon" />
                             <span className="welcome-page-suggestion-text">
                                 {query}
-                                {requiresLogin ? <Tag color="magenta">需登录</Tag> : null}
+                                {requiresLogin ? <Tag color="geekblue">需登录</Tag> : null}
                             </span>
                         </button>
                     ))}

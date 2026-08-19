@@ -102,11 +102,82 @@
 }
 
 .user-message {
-  justify-self: end;
   padding: 10px 16px;
   color: var(--ant-color-text);
   background: var(--ant-color-fill-tertiary);
   border-radius: 22px;
+}
+
+.user-message-wrapper {
+  display: grid;
+  width: fit-content;
+  max-width: min(720px, 90%);
+  justify-self: end;
+}
+
+.user-message-wrapper .user-message {
+  max-width: 100%;
+  justify-self: end;
+}
+
+.message-copy-meta {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-right: 2px;
+  color: var(--ant-color-text-tertiary);
+  font-size: 14px;
+  line-height: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.user-message-meta {
+  justify-content: flex-end;
+  padding-right: 2px;
+}
+
+.assistant-message-wrapper {
+  display: grid;
+  width: 100%;
+}
+
+.assistant-message-meta {
+  justify-content: flex-start;
+  padding-left: 2px;
+}
+
+.assistant-message-wrapper .markdown-content > :last-child {
+  margin-bottom: 8px;
+}
+
+.user-message-wrapper:hover .message-copy-meta,
+.user-message-wrapper:focus-within .message-copy-meta,
+.assistant-message-wrapper:hover .message-copy-meta,
+.assistant-message-wrapper:focus-within .message-copy-meta {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.message-copy-button.ant-btn {
+  width: 28px;
+  height: 28px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.message-copy-button.ant-btn .arco-icon,
+.markdown-content .markdown-code-copy-button.ant-btn .arco-icon {
+  display: block;
+  width: calc(1em + 1px);
+  height: calc(1em + 1px);
+}
+
+.message-copy-button.ant-btn.ant-btn-variant-text:not(:disabled):not(.ant-btn-disabled):hover {
+  color: var(--ant-color-text-secondary);
+  background: transparent;
 }
 
 .user-message .ant-typography {
@@ -191,6 +262,13 @@
   text-underline-offset: 2px;
 }
 
+.markdown-content hr {
+  height: 1px;
+  margin-block: 20px;
+  background: var(--ant-color-border);
+  border: 0;
+}
+
 .markdown-content .contains-task-list {
   padding-left: 0;
   list-style: none;
@@ -242,6 +320,12 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.markdown-content .markdown-code-language .arco-icon {
+  display: block;
+  width: calc(1em + 1px);
+  height: calc(1em + 1px);
 }
 
 .markdown-content .markdown-code-copy-button.ant-btn {

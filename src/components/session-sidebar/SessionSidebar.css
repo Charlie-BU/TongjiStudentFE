@@ -89,6 +89,56 @@
     background: var(--ant-color-fill-secondary);
 }
 
+.session-list-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    border-radius: var(--ant-border-radius);
+}
+
+.session-list-row:hover,
+.session-list-row-selected {
+    background: var(--ant-color-fill-secondary);
+}
+
+.session-list-row .session-list-item.ant-btn,
+.session-list-row .session-list-item.ant-btn:hover,
+.session-list-row .session-list-item-selected.ant-btn {
+    min-width: 0;
+    flex: 1;
+    background: transparent;
+}
+
+.session-list-row .session-list-item-input.ant-input {
+    min-width: 0;
+    flex: 1;
+}
+
+.session-list-item-more.ant-btn {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    margin-right: 8px;
+    color: var(--ant-color-text-tertiary);
+    background: transparent;
+    font-size: 18px;
+    opacity: 0;
+    transition: color 160ms ease, opacity 160ms ease;
+}
+
+.session-list-row:hover .session-list-item-more.ant-btn,
+.session-list-row-selected .session-list-item-more.ant-btn,
+.session-list-item-more.ant-btn:focus-visible {
+    opacity: 1;
+}
+
+.session-list-item-more.ant-btn.ant-btn-variant-text:not(:disabled):not(.ant-btn-disabled):hover,
+.session-list-item-more.ant-btn.ant-btn-variant-text:not(:disabled):not(.ant-btn-disabled):active,
+.session-list-item-more.ant-btn:focus-visible {
+    color: var(--ant-color-text);
+    background: transparent;
+}
+
 .session-list > .ant-typography,
 .session-list-item.ant-btn .ant-typography {
     display: block;

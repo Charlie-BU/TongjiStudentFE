@@ -1,3 +1,62 @@
+## CHANGELOG - 2026-08-19 13:47 - 完善聊天消息元信息与会话操作入口
+
+### 撰写时间
+
+- 2026-08-19 13:47
+
+### Base Commit
+
+- 8219778eb21be1b694229fd96055cb7c3ae52a33
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+上一轮欢迎页和登录引导落地后，聊天页仍缺少对已发送问题、最终回答的轻量操作入口；用户需要复制内容或判断消息时间时，只能手工选择文本。会话侧栏的重命名、删除也仍依赖右键菜单，在触控设备和不熟悉该交互的用户面前不够直接。
+
+这次的目标因此不是改动 `useChat` 的建会话、SSE 或恢复语义，而是在既有消息与会话数据之上补齐可见的操作层：消息悬浮元信息、三点菜单、预留输入能力提示，以及欢迎页和主题的一组小幅视觉收口。同时同步修正了改动过程中暴露出的删除菜单回归测试，并补上复制降级路径的测试。
+
+### 改动概览
+
+- `ChatArea` 将用户问题和有最终文本的 assistant 回答拆为 `UserMessage`、`AssistantMessage` 与 `MessageCopyMeta`：每条消息展示发送时间，并提供“复制问题”或“复制回答”按钮；复制成功后短暂切换为已复制状态。
+- 复制逻辑收敛为 `copyText`：优先使用 `navigator.clipboard.writeText`，不可用或写入失败时继续使用临时 textarea 与 `document.execCommand("copy")` 回退。原代码块复制也复用这条路径。
+- `SessionSidebar` 从右键 `Dropdown` 改为每条认证会话右侧的三点按钮；保留重命名、删除、流式会话删除禁用和删除确认逻辑，并把菜单文案调整为“删除会话”。
+- `ChatInput` 为尚未实现的提及和附件按钮增加“敬请期待”提示；`WelcomePage` 更新推荐问题、图标和登录标签色，样式层补齐消息元信息、分隔线、图标尺寸与侧栏悬浮操作的视觉规则。
+- 新增 `@arco-design/web-react` 与 `add` 直接依赖，并同步更新 `pnpm-lock.yaml`；当前代码以 Arco 的 `IconCode`、`IconCopy` 渲染聊天区图标。
+- `test/components/session-sidebar.test.tsx` 同步删除菜单的新文案；`test/components/chat-area.test.tsx` 新增问题/回答复制、时间元素和 Clipboard 回退的离线回归用例。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`ChatArea` 继续只消费 `useChat` 输出的 `turns`，其中 `question`、`answer` 和 `startedAt` 是新增展示所需的现有字段；`SessionSidebar` 继续由 `userBasicInfo` 决定是否显示服务端会话操作，并由 `streamingSessionId` 决定删除是否禁用。
+- 当前改动：`turns` 渲染时把问题和回答传入消息展示组件，`MessageCopyMeta` 按消息类型决定按钮与时间的排列。复制完成后通过本地 timer 恢复按钮文案；组件卸载时清理 timer。侧栏在单条会话的行容器中保留会话选择按钮，并把 `Dropdown` 的触发点收敛为独立的三点按钮，避免点击操作入口切换当前会话。
+- 下游影响：`useChat.submitQuestion`、SSE 事件投影、`SessionDeleteDELETE` 和删除确认 Modal 的调用契约均未修改。用户提交推荐问题后，`WelcomePage -> ChatInput -> useChat` 的既有路径保持不变；新增测试使用 service Fake 和浏览器 API stub，不访问真实 Agent、认证服务或学生数据。
+
+### 改动结果与业务影响
+
+聊天消息在悬浮或键盘聚焦时会显示复制入口与时间，用户可以复制原始问题或 Markdown 渲染前的回答文本。代码块也使用同一复制降级逻辑，因此受限浏览器中仍会尝试兼容路径。侧栏把会话操作显式暴露为三点菜单，生成中的会话仍不能删除，认证与匿名会话的数据来源和选择行为不变。
+
+这次没有调整服务端协议、路由格式或会话状态模型，影响集中在客户端呈现与交互层。代价是新增了 Arco 组件库和 `add` 依赖；其中 `add` 当前未见业务代码导入，且项目已经拥有 Ant Design 图标依赖，后续应确认是否确有保留这两项依赖的必要。
+
+### 验证结果
+
+- `pnpm exec vitest run test/components/chat-area.test.tsx test/components/session-sidebar.test.tsx`：2 个测试文件、19 个用例通过。
+- `pnpm test`：8 个测试文件、42 个用例全部通过。
+- `pnpm test:typecheck` 与 `pnpm lint`：通过；`git diff --check`：通过。
+- `pnpm build`：未通过。Vite/Rolldown 在 `react-syntax-highlighter` 的 `async-languages/hljs.js` 中无法解析 `highlight.js/lib/languages/sql_more`。该错误发生在依赖解析阶段，本次没有修改对应的聊天语法高亮源码；在此问题处理前，生产构建仍未完成验证。
+
+### 风险与待办
+
+- 当前消息复制按钮主要通过 hover 和 `:focus-within` 显示。触控设备缺少 hover，仍应在真实移动端检查按钮发现性与触控区域。
+- `formatMessageTime` 以浏览器本地日期判断“当天”，跨时区、夏令时或服务端时间戳异常时可能产生与用户预期不一致的文案；本次仅验证了时间元素和时间戳属性，尚未覆盖这些边界。
+- `@arco-design/web-react` 仅用于两个图标，而 `add` 尚无代码引用；应在合并前移除无用依赖，或明确其产品与技术必要性，并重新检查包体积与锁文件变更。
+- 生产构建的 `sql_more` 解析失败需要单独定位依赖版本与 Vite/Rolldown 兼容性；同时主 JavaScript bundle 仍超过 500 kB，构建恢复后应再评估拆包方案。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(chat): add message copy and session action menu`
+
 ## CHANGELOG - 2026-08-19 03:23 - 新增欢迎页与登录提醒，并完善侧栏和代码复制体验
 
 ### 撰写时间
