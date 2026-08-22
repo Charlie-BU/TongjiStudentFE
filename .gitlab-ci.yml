@@ -1,11 +1,10 @@
-deploy-pages:
-  image: node:22-alpine
+pages:
   stage: deploy
   script:
-    - corepack enable
-    - pnpm install --frozen-lockfile
-    - pnpm build
-  pages:
-    publish: dist
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - mkdir .public
+    - cp -r ./dist/* .public
+    - rm -rf public
+    - mv .public public
+  artifacts:
+    paths:
+      - public
