@@ -18,7 +18,7 @@ type OauthTokenResponse = Awaited<ReturnType<typeof tongjiStudentService.TongjiO
 const pendingTokenExchanges = new Map<string, Promise<OauthTokenResponse>>();
 
 function returnToApp(): void {
-  window.location.replace("/");
+  window.location.replace(import.meta.env.BASE_URL);
 }
 
 // OauthCallback 消费独立认证页转回的 code/state，并在换取 Token 后返回应用首页。
@@ -30,7 +30,11 @@ export function OauthCallback({ onComplete = returnToApp, onFail = returnToApp }
   );
 
   useEffect(() => {
-    window.history.replaceState(null, "", "/oauth/callback");
+    window.history.replaceState(
+      null,
+      "",
+      `${import.meta.env.BASE_URL}oauth/callback`,
+    );
 
     if (!code || !state) {
       onFail();

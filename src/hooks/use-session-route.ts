@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
+const APP_BASE_PATH = import.meta.env.BASE_URL;
+
 // useSessionRoute 将浏览器路径映射为当前会话，避免引入额外路由依赖。
 export function useSessionRoute() {
     const [sessionId, setSessionId] = useState(getSessionIdFromLocation);
@@ -14,13 +16,13 @@ export function useSessionRoute() {
     }, []);
 
     const openSession = useCallback((nextSessionId: string): void => {
-        const path = `/session/${encodeURIComponent(nextSessionId)}`;
+        const path = `${APP_BASE_PATH}session/${encodeURIComponent(nextSessionId)}`;
         window.history.pushState(null, "", path);
         setSessionId(nextSessionId);
     }, []);
 
     const openNewChat = useCallback((): void => {
-        window.history.pushState(null, "", "/");
+        window.history.pushState(null, "", APP_BASE_PATH);
         setSessionId(null);
     }, []);
 
@@ -28,13 +30,20 @@ export function useSessionRoute() {
 }
 
 function getSessionIdFromLocation(): string | null {
-    const match = window.location.pathname.match(/^\/session\/([^/]+)$/);
-    if (!match) {
+    const sessionPathPrefix = `${APP_BASE_PATH}session/`;
+    if (!window.location.pathname.startsWith(sessionPathPrefix)) {
+        return null;
+    }
+
+    const encodedSessionId = window.location.pathname.slice(
+        sessionPathPrefix.length,
+    );
+    if (!encodedSessionId || encodedSessionId.includes("/")) {
         return null;
     }
 
     try {
-        return decodeURIComponent(match[1]);
+        return decodeURIComponent(encodedSessionId);
     } catch {
         return null;
     }

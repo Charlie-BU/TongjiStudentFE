@@ -26,9 +26,10 @@ const SIDEBAR_MAX_WIDTH = 570;
 const TONGJI_ACCESS_TOKEN_KEY = "tongji-access-token";
 const TONGJI_OAUTH_AUTHORIZE_PATH = "/v1/tongji/oauth/authorize";
 const LOGIN_REMINDER_SEEN_KEY = "tongji-login-reminder-seen";
+const OAUTH_CALLBACK_PATH = `${import.meta.env.BASE_URL}oauth/callback`;
 
 function App() {
-    return window.location.pathname === "/oauth/callback" ? (
+    return window.location.pathname === OAUTH_CALLBACK_PATH ? (
         <OauthCallback />
     ) : (
         <ChatApp />

@@ -7,8 +7,10 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_DEV_API_TARGET
   const devServerPort = Number(env.VITE_DEV_SERVER_PORT || 5173)
+  const base = env.VITE_APP_BASE_PATH || '/'
 
   return {
+    base,
     envPrefix: ['VITE_', 'TEST_'],
     plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
     server: {
