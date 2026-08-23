@@ -42,6 +42,7 @@
   line-height: 18px;
   letter-spacing: 0.02em;
   transform: translateX(-50%);
+  white-space: nowrap;
 }
 
 .welcome-page-copyright a {
