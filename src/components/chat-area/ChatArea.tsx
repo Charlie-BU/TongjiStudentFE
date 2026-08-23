@@ -56,6 +56,13 @@ SyntaxHighlighter.registerLanguage("ts", typescript);
 SyntaxHighlighter.registerLanguage("yaml", yaml);
 SyntaxHighlighter.registerLanguage("yml", yaml);
 const markdownComponents: Components = {
+    a({ children, ...props }) {
+        return (
+            <a {...props} rel="noopener noreferrer" target="_blank">
+                {children}
+            </a>
+        );
+    },
     code({ children, className, node, ...props }) {
         const language = /language-([\w-]+)/.exec(className ?? "")?.[1];
         const isBlock = node?.position?.start.line !== node?.position?.end.line;

@@ -6,6 +6,7 @@
   flex: 1;
   min-width: 0;
   min-height: 0;
+  position: relative;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
@@ -30,6 +31,23 @@
 
 .welcome-page-title-mobile {
   display: none;
+}
+
+.welcome-page-copyright {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  color: var(--ant-color-text-tertiary);
+  font-size: 14px;
+  line-height: 18px;
+  letter-spacing: 0.02em;
+  transform: translateX(-50%);
+}
+
+.welcome-page-copyright a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .welcome-page .chat-input-panel {
@@ -144,5 +162,9 @@
 
   .welcome-page-suggestions {
     padding-inline: 8px;
+  }
+
+  .welcome-page-copyright {
+    bottom: 16px;
   }
 }

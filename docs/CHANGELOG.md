@@ -1,3 +1,60 @@
+## CHANGELOG - 2026-08-23 18:53 - 补齐外部链接安全策略与欢迎页公测反馈入口
+
+### 撰写时间
+
+- 2026-08-23 18:53
+
+### Base Commit
+
+- `6e67a1d2fe6e3a2dc5ba8191a2eeca57480e02e3`
+
+### Compare Scope
+
+- `working_tree_only`
+
+### 背景与改动目标
+
+聊天回答已经支持 Markdown 链接，欢迎页也需要一个稳定的公测反馈入口。原先 Markdown 链接沿用浏览器默认行为，会在当前窗口跳转；而新增的外部反馈表单如果没有明确新窗口与引用策略，会让用户离开正在进行的会话页，且安全语义依赖浏览器默认值。
+
+这次没有改动会话、认证或 SSE 协议，而是把外部链接收敛为统一的展示层策略：聊天 Markdown 链接统一在新窗口打开，并声明 `noopener noreferrer`；欢迎页底部展示版权与公测反馈链接。审阅中发现反馈入口没有测试，因此本轮同时补上首页契约断言，确保 URL 和安全属性不会在后续样式或布局调整中丢失。
+
+### 改动概览
+
+- `ChatArea` 的 `react-markdown` 组件映射新增 `a` 渲染器。回答中的 Markdown 链接继续保留原始 `href` 与可访问名称，但固定输出 `target="_blank"`、`rel="noopener noreferrer"`。
+- `WelcomePage` 在欢迎态主区域底部新增“© 2026 同济破壁工作室 · 公测反馈”页脚，链接指向指定的飞书反馈表单，并以 `target="_blank"`、`rel="noreferrer"` 打开。
+- `WelcomePage.css` 将欢迎页设为定位容器，为页脚增加底部定位、弱化文本色、下划线和移动端底边距，保留原有居中输入区与推荐问题布局。
+- `test/components/chat-area.test.tsx` 扩展 Markdown 链接测试，覆盖目标地址、新窗口和 `noopener noreferrer`。
+- `test/components/app.test.tsx` 在欢迎态测试中覆盖“公测反馈”链接的文本、飞书地址、`target` 与 `rel`；该测试补齐了审阅指出的入口契约缺口。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：`useChat` 把 Agent 最终回答写入 `ChatTurn.answer`，`AssistantMessage` 使用 `ReactMarkdown` 渲染这段文本；根路径没有 `sessionId` 时，`App` 渲染 `WelcomePage`。这两条既有分流链路均未改签名。
+- 当前改动：Markdown 链接经过 `markdownComponents.a` 后统一增加外部打开属性；欢迎页在 `ChatInput` 和推荐问题之后渲染 footer，静态 CSS 以 `.welcome-page` 为定位上下文把它固定在页面底部。
+- 下游影响：用户点击回答中的外部资料或“公测反馈”不会替换当前会话路由，因此不会中断本页的输入、流式展示和匿名/认证会话状态。链接的内容、聊天 Markdown 的 GFM/数学/代码块渲染，以及 `submitQuestion` 调用链保持不变。
+
+### 改动结果与业务影响
+
+当前聊天页和欢迎页都为外部跳转提供明确行为：用户可在保留当前应用状态的前提下查看资料或提交反馈。欢迎页的页脚采用绝对定位，桌面端距底部 20 px，窄屏时调整为 16 px；主体已有底部留白，常规欢迎态内容不会被页脚覆盖。
+
+这次增加的 App 测试直接验证可观察 DOM 契约，而不是断言 CSS 实现细节或浏览器新窗口行为。测试使用已有的离线 service Fake，不请求飞书、Agent 服务、认证服务或任何真实用户数据。
+
+### 验证结果
+
+- `pnpm exec vitest run test/components/app.test.tsx`：1 个测试文件、11 个用例通过，包含新增反馈链接断言。
+- `pnpm test`：8 个测试文件、45 个用例全部通过；jsdom 对 Canvas 和 pseudo-element 的提示不影响测试结果。
+- `pnpm test:typecheck`、`pnpm lint`、`pnpm build` 与 `git diff --check`：通过。
+- 构建产物仍提示主 JavaScript chunk 约 1.29 MB（gzip 约 406 kB），这与仓库白名单中 `react-markdown` 的首屏包体积取舍一致，本次未引入新的拆包策略。
+
+### 风险与待办
+
+- `ChatArea` 新增的 `a` 渲染器当前将 `react-markdown` 提供的内部 `node` 属性随其余 props 展开到原生 `<a>`。这不会改变链接 URL，但可能带来未知 DOM 属性或开发期警告；后续应在解构时显式丢弃 `node`，并补充反向断言。
+- 欢迎页页脚依赖绝对定位。当前 CSS 为内容预留了底部空间，但推荐问题、字体缩放或极小视口下仍应在真实移动端检查是否发生视觉重叠与链接可触达性。
+- 反馈地址是产品固定外部配置。若未来需要环境隔离、灰度或更换表单，建议通过受校验的前端配置提供，而不是在组件内散落多个 URL。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(ui): add secure external links and feedback entry`
+
 ## CHANGELOG - 2026-08-19 14:56 - 增加限流重试并锁定生成中的会话切换
 
 ### 撰写时间

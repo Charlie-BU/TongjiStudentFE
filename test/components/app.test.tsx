@@ -41,6 +41,13 @@ describe("App", () => {
 
     expect(screen.getByLabelText("输入校园问题")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "发送问题" })).toBeDisabled();
+    const feedbackLink = screen.getByRole("link", { name: "公测反馈" });
+    expect(feedbackLink).toHaveAttribute(
+      "href",
+      "https://tongji-poby.feishu.cn/share/base/form/shrcnaw6IqDVMtbWKY9XCOvGl8b",
+    );
+    expect(feedbackLink).toHaveAttribute("target", "_blank");
+    expect(feedbackLink).toHaveAttribute("rel", "noreferrer");
   });
 
   it("应在页面挂载时获取并展示用户基础信息", async () => {
