@@ -306,7 +306,7 @@
 
 ### 关键链路解析（含上下游）
 
-- 上游依赖：CAM 生成客户端已提供 `TongjiOauthTokenPOST` 与 `UserBasicInfoGET`，而 `tongjiStudentService` 会从同一 `localStorage` 键注入 `Authorization`。侧栏使用 `VITE_TONGJI_STUDENT_BASE_URL` 组装认证入口，开发环境可继续经 `/api` 代理访问服务端。
+- 上游依赖：CAM 生成客户端已提供 `TongjiOauthTokenPOST` 与 `UserBasicInfoGET`，而 `tongjiStudentService` 会从同一 `localStorage` 键注入 `Authorization`。侧栏使用 `VITE_TONGJI_STUDENT_BASE_URL` 组装认证入口，开发环境直接访问服务端。
 - 当前改动：授权平台回跳到 `/oauth/callback?code=...&state=...` 后，`OauthCallback` 先以 `history.replaceState` 移除敏感查询参数，再以 `code/state` 换取 Token。`ChatApp` 后续请求用户资料；只有服务端明确返回 `401` 才移除本地 Token。Markdown 则通过共享的 `markdownComponents` 同时作用于回答与推理内容，块级代码交给 `PrismLight` 渲染，行内代码保持原生 `<code>`。
 - 下游影响：获得 Token 后，既有会话列表、历史恢复和 SSE 请求都会由服务适配器自动携带 Bearer 头，调用接口无需改签名。侧栏能据用户资料转换为登录菜单；无资料时仍可发起认证。渲染层只消费既有 `ChatTurn.answer` 与 `ChatTurn.reasoning`，不影响 SSE 事件模型。
 
