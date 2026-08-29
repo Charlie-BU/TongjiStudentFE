@@ -173,6 +173,16 @@ export function WelcomePage({
                     ))}
                 </div>
             </section>
+            <footer className="welcome-page-copyright">
+                © 2026 同济破壁工作室 · {" "}
+                <a
+                    href="https://tongji-poby.feishu.cn/share/base/form/shrcnaw6IqDVMtbWKY9XCOvGl8b"
+                    rel="noreferrer"
+                    target="_blank"
+                >
+                    公测反馈
+                </a>
+            </footer>
         </main>
     );
 }

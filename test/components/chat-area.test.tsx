@@ -99,10 +99,10 @@ describe("ChatArea", () => {
 
     expect((await screen.findByText("已完成")).closest("del")).not.toBeNull();
     expect(screen.getByRole("checkbox")).toBeChecked();
-    expect(screen.getByRole("link", { name: "https://example.com" })).toHaveAttribute(
-      "href",
-      "https://example.com",
-    );
+    const markdownLink = screen.getByRole("link", { name: "https://example.com" });
+    expect(markdownLink).toHaveAttribute("href", "https://example.com");
+    expect(markdownLink).toHaveAttribute("target", "_blank");
+    expect(markdownLink).toHaveAttribute("rel", "noopener noreferrer");
     expect(container.querySelector(".katex")).not.toBeNull();
     expect(container.querySelector(".markdown-content br")).not.toBeNull();
   });
