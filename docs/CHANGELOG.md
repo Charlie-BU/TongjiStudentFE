@@ -1,3 +1,53 @@
+## CHANGELOG - 2026-08-29 22:20 - 将前端 API 调用收敛至同源 /api 代理
+
+### 撰写时间
+
+- 2026-08-29 22:20
+
+### Base Commit
+
+- 052358ff4e5641a0ce1ef605fd7dc7893faa739e
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+- 浏览器此前可将 Agent 服务的公开地址直接作为 API 基地址，生产环境需要依赖跨域访问，并使后端域名暴露在前端配置中。
+- 本次将浏览器请求统一收敛为同源 `/api`，由前端容器的 Caddy 转发到真实后端；同时分离“Caddy 上游地址”和“浏览器请求基地址”两个环境变量，避免职责混用。
+
+### 改动概览
+
+- Caddy 新增 `/api` 路由：移除 `/api` 前缀后反向代理到必填的 `VITE_TONGJI_STUDENT_BASE_URL`，并以 `flush_interval -1` 保持流式聊天响应及时下发。
+- 浏览器侧请求配置改用 `VITE_TONGJI_STUDENT_DIRECT_BASE_URL`，默认值为 `/api`。CAM 生成客户端、OAuth 登录入口和侧栏登录入口均使用该值。
+- Docker 构建阶段默认注入 `VITE_TONGJI_STUDENT_DIRECT_BASE_URL=/api`；`VITE_TONGJI_STUDENT_BASE_URL` 保留给 Caddy 运行时读取，不作为前端构建变量传入。
+- Vite 开发服务器新增同样的 `/api` 转发规则，读取 `VITE_TONGJI_STUDENT_BASE_URL` 作为本地上游并移除前缀，使本地和生产请求路径一致。
+- 更新 `.env.example`，明确两个变量的职责及生产部署方式。
+
+### 关键链路解析（含上下游）
+
+- 上游配置：部署环境在 Caddy 运行时提供 `VITE_TONGJI_STUDENT_BASE_URL=https://<agent-host>`；前端构建使用 `VITE_TONGJI_STUDENT_DIRECT_BASE_URL=/api`。
+- 当前改动：浏览器请求 `/api/v1/...`，Caddy 或 Vite 开发代理改写为上游所需的 `/v1/...`，并保留请求方法、查询参数、鉴权头与 SSE 响应流。
+- 下游影响：会话、消息流、任务计划、OAuth 跳转和用户信息接口均经同源入口访问；后端不再需要为该前端 Origin 提供 CORS 支持。OAuth 提供方回调地址和 Agent 的后端路由保持不变。
+
+### 审阅与验证
+
+- 变更审阅确认 API 客户端和两个 OAuth 跳转入口均已迁移，未发现继续读取旧浏览器侧 `VITE_TONGJI_STUDENT_BASE_URL` 的运行时代码。
+- `pnpm test`：9 个测试文件、47 个用例全部通过。jsdom 的 Canvas 与 pseudo-element 提示不影响结果。
+- `pnpm lint`、`pnpm test:typecheck`、`pnpm build`、`git diff --check`：通过。
+- 本机未安装 Caddy 二进制，未执行 Caddy 原生配置解析；配置仅使用 Caddyfile 的标准 `handle`、`uri` 与 `reverse_proxy` 指令，仍建议在 Railway 部署日志中确认 Caddy 成功加载。
+
+### 风险与待办
+
+- `VITE_TONGJI_STUDENT_BASE_URL` 以 `VITE_` 开头；虽然 Dockerfile 未将其作为构建参数传入，部署系统若额外把运行时变量注入前端构建环境，该公开后端 URL 仍可能出现在产物中。该 URL 不含凭据，但部署配置应避免将其作为 build arg 传递。
+- 后端上游变量未配置时，Caddy 应在加载配置时失败，这是预期的 fail-fast 行为；部署前需确认 Railway FE 服务已设置该变量。
+- 构建仍提示主 JavaScript chunk 超过 500 kB；本次未改变拆包策略。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(deploy): proxy frontend API requests through /api`
+
 ## CHANGELOG - 2026-08-29 19:37 - 引入稳定会话历史分页与按用户隔离的本地缓存
 
 ### 撰写时间

@@ -6,6 +6,7 @@ import babel from '@rolldown/plugin-babel'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const devServerPort = Number(env.VITE_DEV_SERVER_PORT || 5173)
+  const upstream = env.VITE_TONGJI_STUDENT_BASE_URL?.trim()
 
   return {
     envPrefix: ['VITE_', 'TEST_'],
@@ -14,6 +15,15 @@ export default defineConfig(({ mode }) => {
       // 固定使用 .env 中声明的开发端口，避免 Vite 自动漂移到其他端口。
       port: Number.isFinite(devServerPort) && devServerPort > 0 ? devServerPort : 5173,
       strictPort: true,
+      proxy: upstream
+        ? {
+            '/api': {
+              target: upstream,
+              changeOrigin: true,
+              rewrite: (path) => path.replace(/^\/api(?=\/|$)/, ''),
+            },
+          }
+        : undefined,
     },
   }
 })

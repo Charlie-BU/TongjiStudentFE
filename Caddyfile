@@ -7,8 +7,22 @@
 :{$PORT:3000} {
 	respond /health 200
 
-	root * /srv
-	encode zstd gzip
-	try_files {path} /index.html
-	file_server
+	# The upstream must be supplied by VITE_TONGJI_STUDENT_BASE_URL at runtime.
+	# Requests use the browser-facing /api prefix, while the backend receives its
+	# native /v1 path.
+	@api path /api /api/*
+	handle @api {
+		uri strip_prefix /api
+		reverse_proxy {$VITE_TONGJI_STUDENT_BASE_URL} {
+			flush_interval -1
+		}
+	}
+
+	# Serve the SPA only after API requests have been handled.
+	handle {
+		root * /srv
+		encode zstd gzip
+		try_files {path} /index.html
+		file_server
+	}
 }

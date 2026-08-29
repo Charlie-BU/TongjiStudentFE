@@ -9,9 +9,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . ./
 
-# Vite exposes this public backend URL in the browser bundle at build time.
-ARG VITE_TONGJI_STUDENT_BASE_URL
-ENV VITE_TONGJI_STUDENT_BASE_URL=${VITE_TONGJI_STUDENT_BASE_URL}
+# Vite exposes this browser-direct API base URL in the bundle at build time.
+# In production it is /api and Caddy proxies it to VITE_TONGJI_STUDENT_BASE_URL.
+ARG VITE_TONGJI_STUDENT_DIRECT_BASE_URL=/api
+ENV VITE_TONGJI_STUDENT_DIRECT_BASE_URL=${VITE_TONGJI_STUDENT_DIRECT_BASE_URL}
 
 RUN pnpm build
 
