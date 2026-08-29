@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,6 +42,40 @@ describe("SessionSidebar", () => {
       "较早会话",
     ]);
     expect(tongjiStudentService.SessionGET).toHaveBeenCalledWith({});
+  });
+
+  it("应先展示缓存的会话列表并静默更新", async () => {
+    window.localStorage.setItem(
+      "tongji-session-list:test-student-001",
+      JSON.stringify([
+        { id: "cached-session", name: "缓存会话", lastActiveAt: "2026-08-10T10:00:00Z" },
+      ]),
+    );
+    let resolveSessions: (response: unknown) => void;
+    tongjiStudentService.SessionGET.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveSessions = resolve;
+      }),
+    );
+
+    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId={null} userBasicInfo={userBasicInfo} />);
+
+    expect(screen.getByText("缓存会话")).toBeInTheDocument();
+    expect(tongjiStudentService.SessionGET).toHaveBeenCalledWith({});
+
+    await act(async () => {
+      resolveSessions!({
+        sessions: [
+          { id: "remote-session", name: "远端会话", last_active_at: "2026-08-11T10:00:00Z" },
+        ],
+      });
+    });
+
+    expect(await screen.findByText("远端会话")).toBeInTheDocument();
+    expect(screen.queryByText("缓存会话")).not.toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem("tongji-session-list:test-student-001")!)).toEqual([
+      { id: "remote-session", name: "远端会话", lastActiveAt: "2026-08-11T10:00:00Z" },
+    ]);
   });
 
   it("应将 New Chat 操作交给上层会话状态", async () => {

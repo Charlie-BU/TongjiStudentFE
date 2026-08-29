@@ -19,6 +19,12 @@ import { useSessionRoute } from "./hooks/use-session-route";
 import { tongjiStudentService } from "./services/tongji-student";
 import type { UserBasicInfo200Response } from "./cam-auto-generate/TongjiStudent/namespaces";
 import { addAnonymousSession } from "./utils/anonymous-session";
+import {
+    cacheUserBasicInfo,
+    clearCachedSessions,
+    clearCachedUserBasicInfo,
+    getCachedUserBasicInfo,
+} from "./services/bootstrap-cache";
 
 const SIDEBAR_DEFAULT_WIDTH = 260;
 const SIDEBAR_MIN_WIDTH = 224;
@@ -102,8 +108,10 @@ function ChatApp() {
     );
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [userBasicInfo, setUserBasicInfo] =
-        useState<UserBasicInfo200Response | null>(null);
-    const [isUserInfoResolved, setIsUserInfoResolved] = useState(false);
+        useState<UserBasicInfo200Response | null>(getCachedUserBasicInfo);
+    const [isUserInfoResolved, setIsUserInfoResolved] = useState(
+        () => getCachedUserBasicInfo() !== null,
+    );
     const [isLoginReminderOpen, setIsLoginReminderOpen] = useState(false);
     const handleSessionRestoreFailed = useCallback((): void => {
         openNewChat();
@@ -190,11 +198,13 @@ function ChatApp() {
                 }
 
                 if (user) {
+                    cacheUserBasicInfo(user);
                     setUserBasicInfo(user);
                     setIsUserInfoResolved(true);
                     return;
                 }
 
+                clearCachedUserBasicInfo();
                 setUserBasicInfo(null);
                 setIsUserInfoResolved(true);
             })
@@ -202,11 +212,17 @@ function ChatApp() {
                 if (isActive) {
                     if (
                         getResponseStatus(error) === 401 ||
+                        getResponseStatus(error) === 403 ||
                         getResponseStatus(error) === 502
                     ) {
+                        const cachedUser = getCachedUserBasicInfo();
                         clearAccessToken();
+                        clearCachedUserBasicInfo();
+						if (cachedUser) {
+							clearCachedSessions(cachedUser.userId);
+						}
+                        setUserBasicInfo(null);
                     }
-                    setUserBasicInfo(null);
                     setIsUserInfoResolved(true);
                 }
             });

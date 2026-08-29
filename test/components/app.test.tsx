@@ -58,6 +58,42 @@ describe("App", () => {
     expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
   });
 
+  it("应先展示缓存的用户信息并静默更新", async () => {
+    window.localStorage.setItem(
+      "tongji-user-basic-info",
+      JSON.stringify({
+        name: "缓存同学",
+        userId: "cached-student-001",
+        userTypeName: "本科生",
+      }),
+    );
+    let resolveUser: (user: unknown) => void;
+    tongjiStudentService.UserBasicInfoGET.mockImplementationOnce(
+      () => new Promise((resolve) => {
+        resolveUser = resolve;
+      }),
+    );
+
+    render(<App />);
+
+    expect(screen.getByText("缓存同学")).toBeInTheDocument();
+    expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
+
+    await act(async () => {
+      resolveUser!({
+        name: "更新同学",
+        userId: "cached-student-001",
+        userTypeName: "研究生",
+      });
+    });
+
+    expect(await screen.findByText("更新同学")).toBeInTheDocument();
+    expect(JSON.parse(window.localStorage.getItem("tongji-user-basic-info")!)).toMatchObject({
+      name: "更新同学",
+      userTypeName: "研究生",
+    });
+  });
+
   it("应在用户信息请求的非认证失败时保留 Access Token", async () => {
     window.localStorage.setItem("tongji-access-token", "test-access-token");
     tongjiStudentService.UserBasicInfoGET.mockRejectedValueOnce(new Error("network failure"));
@@ -79,6 +115,21 @@ describe("App", () => {
     await waitFor(() => {
       expect(window.localStorage.getItem("tongji-access-token")).toBeNull();
     });
+  });
+
+  it("应在 403 时清理缓存身份与会话列表", async () => {
+    window.localStorage.setItem("tongji-access-token", "test-access-token");
+    window.localStorage.setItem("tongji-user-basic-info", JSON.stringify({ name: "缓存同学", userId: "student-001", userTypeName: "本科生" }));
+    window.localStorage.setItem("tongji-session-list:student-001", "[]");
+    tongjiStudentService.UserBasicInfoGET.mockRejectedValueOnce({ response: { status: 403 } });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem("tongji-access-token")).toBeNull();
+    });
+    expect(window.localStorage.getItem("tongji-user-basic-info")).toBeNull();
+    expect(window.localStorage.getItem("tongji-session-list:student-001")).toBeNull();
   });
 
   it("应在测试环境显示手动配置 Tongji Access Token 的入口", () => {
