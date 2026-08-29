@@ -132,6 +132,7 @@ function ChatApp() {
     );
 
     const chat = useChat({
+		cacheScope: userBasicInfo?.userId ?? "anonymous",
         isAnonymous: userBasicInfo === null,
         onSessionCreated: handleSessionCreated,
         onSessionRestoreFailed: handleSessionRestoreFailed,

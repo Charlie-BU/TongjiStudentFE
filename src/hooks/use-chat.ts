@@ -6,6 +6,14 @@ import {
     type SetStateAction,
 } from "react";
 import type { AxiosProgressEvent, AxiosRequestConfig } from "axios";
+import {
+    cacheSessionHistory,
+	deleteCachedSessionHistory,
+    fetchSessionHistory,
+    getCachedSessionHistory,
+    hasSameSessionMessages,
+    type SessionHistory,
+} from "../services/session-history";
 import { tongjiStudentService } from "../services/tongji-student";
 import { updateAnonymousSessionLastActiveAt } from "../utils/anonymous-session";
 
@@ -55,6 +63,7 @@ const RATE_LIMIT_RETRY_DELAY_MS = 3000;
 
 type UseChatOptions = {
     isAnonymous?: boolean;
+	cacheScope?: string;
     onSessionCreated?: (
         session: SessionSummary,
         isAnonymous?: boolean,
@@ -65,6 +74,7 @@ type UseChatOptions = {
 // useChat 收敛会话创建、SSE 消费、停止和聊天状态，页面组件仅负责渲染。
 export function useChat({
     isAnonymous = false,
+	cacheScope = "anonymous",
     onSessionCreated,
     onSessionRestoreFailed,
 }: UseChatOptions = {}) {
@@ -217,26 +227,44 @@ export function useChat({
             setIsStreaming(false);
             setTurns([]);
 
+            const remoteHistoryPromise = fetchSessionHistory(sessionId);
+            let cachedHistory: SessionHistory | null = null;
             try {
-                const response = await tongjiStudentService.SessionMessagesGET({
-                    limit: 100,
-                    session_id: sessionId,
-                });
+                cachedHistory = await getCachedSessionHistory(sessionId, cacheScope);
                 if (restoreSequenceRef.current !== restoreSequence) {
                     return;
                 }
 
-                const restoredTurns = restoreChatTurns(response);
-                turnSequenceRef.current = restoredTurns.length;
-                setTurns(restoredTurns);
+                if (cachedHistory) {
+                    const restoredTurns = restoreChatTurns(cachedHistory);
+                    turnSequenceRef.current = restoredTurns.length;
+                    setTurns(restoredTurns);
+                }
             } catch {
+                // IndexedDB 不可用时降级为远端恢复。
+            }
+
+            try {
+                const remoteHistory = await remoteHistoryPromise;
                 if (restoreSequenceRef.current === restoreSequence) {
+                    if (!hasSameSessionMessages(cachedHistory, remoteHistory)) {
+                        const restoredTurns = restoreChatTurns(remoteHistory);
+                        turnSequenceRef.current = restoredTurns.length;
+                        setTurns(restoredTurns);
+                    }
+                    void cacheSessionHistory(sessionId, cacheScope, remoteHistory).catch(() => {
+                        // 缓存写入失败不影响已成功恢复的远端历史。
+                    });
+                }
+            } catch {
+				if (restoreSequenceRef.current === restoreSequence) {
                     setTurns([]);
+					void deleteCachedSessionHistory(sessionId, cacheScope).catch(() => {});
                     onSessionRestoreFailed?.();
                 }
             }
         },
-        [onSessionRestoreFailed],
+        [cacheScope, onSessionRestoreFailed],
     );
 
     async function getOrCreateSessionId(
