@@ -28,6 +28,11 @@ import {
     clearAnonymousSessions,
     getAnonymousSessions,
 } from "../../utils/anonymous-session";
+import {
+    cacheSessions,
+    clearCachedUserBasicInfo,
+    getCachedSessions,
+} from "../../services/bootstrap-cache";
 
 const { Text, Title } = Typography;
 
@@ -60,9 +65,14 @@ export function SessionSidebar({
     onOauthRedirect = (url) => window.location.assign(url),
     onPageReload = () => window.location.reload(),
 }: SessionSidebarProps) {
-    const [sessions, setSessions] =
-        useState<SessionSummary[]>(getAnonymousSessions);
-    const [isLoading, setIsLoading] = useState(true);
+    const [sessions, setSessions] = useState<SessionSummary[]>(() =>
+        userBasicInfo
+            ? (getCachedSessions(userBasicInfo.userId) ?? [])
+            : getAnonymousSessions(),
+    );
+    const [isLoading, setIsLoading] = useState(
+        () => userBasicInfo !== null && getCachedSessions(userBasicInfo.userId) === null,
+    );
     const [editingSession, setEditingSession] = useState<SessionSummary | null>(
         null,
     );
@@ -77,6 +87,7 @@ export function SessionSidebar({
     };
     const logout = (): void => {
         window.localStorage.removeItem("tongji-access-token");
+        clearCachedUserBasicInfo();
         window.sessionStorage.removeItem(LOGIN_REMINDER_SEEN_KEY);
         onPageReload();
     };
@@ -114,11 +125,13 @@ export function SessionSidebar({
             const exists = currentSessions.some(
                 (item) => item.id === session.id,
             );
-            return exists
+            const updatedSessions = exists
                 ? currentSessions.map((item) =>
                       item.id === session.id ? updatedSession : item,
                   )
                 : [...currentSessions, updatedSession];
+            cacheSessions(userBasicInfo!.userId, updatedSessions);
+            return updatedSessions;
         });
     };
     const deleteSession = (session: SessionSummary): void => {
@@ -132,9 +145,13 @@ export function SessionSidebar({
                     Authorization: "",
                     session_id: session.id,
                 });
-                setSessions((currentSessions) =>
-                    currentSessions.filter((item) => item.id !== session.id),
-                );
+                setSessions((currentSessions) => {
+                    const updatedSessions = currentSessions.filter(
+                        (item) => item.id !== session.id,
+                    );
+                    cacheSessions(userBasicInfo!.userId, updatedSessions);
+                    return updatedSessions;
+                });
                 onSessionDeleted(session.id);
                 if (session.id === selectedSessionId) {
                     onNewChat();
@@ -150,6 +167,8 @@ export function SessionSidebar({
         }
 
         let isActive = true;
+        const hasCachedSessions =
+            getCachedSessions(userBasicInfo.userId) !== null;
 
         void tongjiStudentService
             .SessionGET({})
@@ -157,10 +176,12 @@ export function SessionSidebar({
                 if (!isActive) {
                     return;
                 }
-                setSessions(getSessions(response));
+                const remoteSessions = getSessions(response);
+                cacheSessions(userBasicInfo.userId, remoteSessions);
+                setSessions(remoteSessions);
             })
             .catch(() => {
-                if (isActive) {
+                if (isActive && !hasCachedSessions) {
                     setSessions([]);
                 }
             })
