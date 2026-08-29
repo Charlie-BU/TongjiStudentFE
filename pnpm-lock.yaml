@@ -30,8 +30,8 @@ importers:
         specifier: ^1.19.0
         version: 1.19.0(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0)
       cam-fe-code-generator:
-        specifier: ^1.9.0
-        version: 1.9.0(@types/node@24.13.3)(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0)
+        specifier: ^1.9.3
+        version: 1.9.3(@types/node@24.13.3)(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0)
       katex:
         specifier: ^0.18.3
         version: 0.18.4
@@ -1348,8 +1348,8 @@ packages:
     resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
     engines: {node: '>= 0.4'}
 
-  cam-fe-code-generator@1.9.0:
-    resolution: {integrity: sha512-Bk8U4YRDyZjMxePr0KaohRDWo2gkzZVMby63TJ4f5OK9kByyst/2LbWSOrLGtCCT50VANRebLU3mHmg2pfkirg==}
+  cam-fe-code-generator@1.9.3:
+    resolution: {integrity: sha512-IhNlj7JS1R6PNcHFhe6kWoIF37TfRf3vJH29iR7Awln1s9OhIF0YeSB2QX2JGHe+cn5IcC0SstoDktsJWlV9iQ==}
     hasBin: true
 
   caniuse-lite@1.0.30001809:
@@ -4339,7 +4339,7 @@ snapshots:
       es-errors: 1.3.0
       function-bind: 1.1.2
 
-  cam-fe-code-generator@1.9.0(@types/node@24.13.3)(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0):
+  cam-fe-code-generator@1.9.3(@types/node@24.13.3)(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0):
     dependencies:
       axios: 1.19.0(debug@4.4.3(supports-color@8.0.0))(supports-color@8.0.0)
       cli-table3: 0.6.5

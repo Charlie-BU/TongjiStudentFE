@@ -21,7 +21,7 @@
     "add": "^2.0.9",
     "antd": "^6.5.4",
     "axios": "^1.19.0",
-    "cam-fe-code-generator": "^1.9.0",
+    "cam-fe-code-generator": "^1.9.3",
     "katex": "^0.18.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

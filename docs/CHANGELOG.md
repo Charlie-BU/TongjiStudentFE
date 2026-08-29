@@ -1,3 +1,61 @@
+## CHANGELOG - 2026-08-29 19:37 - 引入稳定会话历史分页与按用户隔离的本地缓存
+
+### 撰写时间
+
+- 2026-08-29 19:37
+
+### Base Commit
+
+- 650e97efe9c94ebce3d297d8fa18ca94784b2a8b
+
+### Compare Scope
+
+- working_tree_only
+
+### 背景与改动目标
+
+- 原先前端只读取最近一页会话消息。历史较长时，前端无法稳定地继续加载更早记录；服务端有新消息写入时，单纯 offset 分页还会产生重复或漏读。
+- 这次接入 Agent 服务新增的 `snapshot_sequence` 分页协议，并尝试用 IndexedDB 缓存缩短会话恢复时的首屏等待。
+- 本地缓存一开始如果只按 `sessionId` 保存，会在同一浏览器配置文件内跨用户复用。因此本次同时将缓存键收敛为“用户范围 + 会话 ID”，并在远端拒绝访问时主动清理。
+
+### 改动概览
+
+- 升级 `cam-fe-code-generator` 并重新生成 `SessionMessagesGET` 类型与请求参数，支持 `offset`、`snapshot_sequence`、`has_more`。
+- 新增 `src/services/session-history.ts`：
+  - 以每页 `50` 条请求完整 canonical 历史；
+  - 首页固定快照，后续请求原样携带 `snapshot_sequence`；
+  - 合并分页结果并按 `sequence` 升序恢复展示顺序；
+  - 使用 IndexedDB 保存会话历史。
+- `useChat.restoreSession` 改为并行启动远端恢复与本地缓存读取：缓存可加快已验证会话的展示，远端结果负责最终确认与刷新。
+- `App` 将当前 `userBasicInfo.userId` 传入 `useChat` 作为缓存范围；匿名会话使用独立的 `anonymous` 范围。
+- IndexedDB schema 升级到 v2，清理旧的仅按 `sessionId` 建键的数据，并以 `cacheKey` 保存新缓存。
+- 远端历史请求失败时，清空当前 UI、删除当前用户范围下的缓存，并触发 `onSessionRestoreFailed`。
+- 补充分页快照参数、跨页合并、远端拒绝时缓存清理的测试。
+
+### 关键链路解析（含上下游）
+
+- 上游依赖：Agent 接口 `GET /v1/sessions/:session_id/messages` 返回 `messages`、`has_more` 和 `snapshot_sequence`。CAM 生成代码负责把前端参数映射为 HTTP query。
+- 当前改动：`fetchSessionHistory()` 首次请求获得快照，后续页统一以该快照读取；`useChat` 将结果转换为 `ChatTurn`，并写入用户隔离后的 IndexedDB。
+- 下游影响：历史较长的会话可继续恢复完整消息；前端调用方无需自行管理分页循环。认证用户切换后不会读取前一用户的同名缓存键。
+- 失败边界：若远端因删除、过期或归属校验拒绝会话访问，本地缓存不再继续保留或展示，避免让缓存绕过服务端授权结果。
+
+### 改动结果与业务影响
+
+- 会话恢复不再受单页 `100` 条消息上限约束，前端会在固定快照内自动加载完整历史。
+- 并发新增消息不会混入当前恢复链路；下一次恢复会获取新的快照。
+- 已验证会话可先利用本地缓存恢复，再以远端结果校正；缓存写入或 IndexedDB 不可用不会阻断远端恢复。
+- 缓存隔离依赖 `userId`，因此认证信息切换后应由 `App` 重新渲染并传递新的缓存范围。
+
+### 风险与待办
+
+- 当历史页数较少但首页仍有 `has_more` 时，当前实现会并行预取第二、第三页，可能产生一个空页请求；这是为了减少长会话恢复的串行等待，仍可根据真实网络数据继续调整。
+- IndexedDB 缓存包含 canonical 消息内容，应继续避免向其中写入不应在浏览器持久化的敏感字段。
+- 已通过 `pnpm test:typecheck`、`pnpm lint` 和新增定向 Vitest 用例。全量 `pnpm test` 仍有两项 OAuth 地址断言失败，实际值为 `http://127.0.0.1:8080/...` 而断言仍是 `/api/...`，需在独立改动中确认其期望策略。
+
+### 建议 Commit Message（git-cz）
+
+- `feat(session): add snapshot history cache`
+
 ## CHANGELOG - 2026-08-23 18:53 - 补齐外部链接安全策略与欢迎页公测反馈入口
 
 ### 撰写时间

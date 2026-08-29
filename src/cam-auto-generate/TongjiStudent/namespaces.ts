@@ -30,69 +30,6 @@ export interface Session200Response {
   sessions: Session200ResponseSessionsItem[];
 }
 
-export interface SessionMessagesQueryRequest {
-  /** 返回消息条数，取值范围 `1..100` */
-  limit?: number;
-}
-
-export interface SessionMessagesPathRequest {
-  /** 目标会话 ID */
-  session_id: string;
-}
-
-export interface SessionMessagesHeaderRequest {
-  /** 认证会话传 `Bearer <access_token>`；匿名会话可不传 */
-  Authorization?: string;
-}
-
-export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
-  /** 工具名 */
-  name: string;
-  /** 工具调用参数，为 json 字符串 */
-  arguments: string;
-}
-
-export interface SessionMessages200ResponseMessagesItemTool_callsItem {
-  index: number;
-  /** 工具调用类型，例如：function_call */
-  type: string;
-  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
-  id: string;
-}
-
-export interface SessionMessages200ResponseMessagesItem {
-  /** message_id */
-  id: string;
-  /** 多轮对话 response_id 缓存到期时间。仅 assistant message 存在 */
-  response_cache_expires_at?: number;
-  /** 工具调用 id。仅 tool message 存在 */
-  tool_call_id?: string;
-  /** 模型思考内容 */
-  reasoning_content?: string;
-  /** 模型 Responses API 所带 id，用于多轮对话缓存。仅 assistant message 存在 */
-  response_id?: string;
-  /** 当前 message 创建时间戳 */
-  created_at: string;
-  /** 当前 session_id */
-  session_id: string;
-  /** 本条 message 归属 run_id */
-  run_id: string;
-  /** message 的顺序编号，从 1 开始递增计数 */
-  sequence: number;
-  /** 角色：user、assistant、tool */
-  role: string;
-  /** message 内容 */
-  content: string;
-  /** 工具调用信息。仅 assistant message 存在 */
-  tool_calls?: SessionMessages200ResponseMessagesItemTool_callsItem[];
-  /** 工具名称。仅 tool message 存在 */
-  tool_name?: string;
-}
-
-export interface SessionMessages200Response {
-  messages: SessionMessages200ResponseMessagesItem[];
-}
-
 export interface TaskPlanPathRequest {
   /** 目标会话 ID */
   session_id: string;
@@ -104,12 +41,12 @@ export interface TaskPlanHeaderRequest {
 }
 
 export interface TaskPlan200ResponsePlanItemTasksItem {
-  /** 任务状态： pending 、 in_progress 、 done 、 failed */
-  status: string;
   /** 任务唯一 ID */
   id: string;
   /** 任务描述 */
   desc: string;
+  /** 任务状态： pending 、 in_progress 、 done 、 failed */
+  status: string;
 }
 
 export interface TaskPlan200ResponsePlanItem {
@@ -248,4 +185,79 @@ export interface SessionDeleteHeaderRequest {
 export interface SessionDeleteBodyRequest {
   /** session id */
   session_id: string;
+}
+
+export interface SessionMessagesQueryRequest {
+  /** 本页返回消息数，范围 1..100。前端推荐使用 50。 */
+  limit?: number;
+  /** 从快照中最新消息开始跳过的消息数，必须大于等于 0。 */
+  offset?: number;
+  /** 首次请求响应中的快照最大消息序号；后续所有页原样传回。 */
+  snapshot_sequence?: number;
+}
+
+export interface SessionMessagesPathRequest {
+  /** 目标会话 ID */
+  session_id: string;
+}
+
+export interface SessionMessagesHeaderRequest {
+  /** 认证会话使用 Bearer <access_token>；匿名会话不传。 */
+  Authorization?: string;
+}
+
+export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
+  /** 工具/函数名称。 */
+  name: string;
+  /** 工具参数的 JSON 字符串。 */
+  arguments: string;
+}
+
+export interface SessionMessages200ResponseMessagesItemTool_callsItem {
+  /** 工具调用 ID；tool 消息的 tool_call_id 对应此值。 */
+  id: string;
+  /** 同一 assistant 消息内的工具调用顺序。 */
+  index: number;
+  /** 工具调用类型，如 function_call。 */
+  type: string;
+  /** 函数型工具调用详情。 */
+  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
+}
+
+export interface SessionMessages200ResponseMessagesItem {
+  /** 消息唯一 ID。 */
+  id: string;
+  /** 所属会话 ID。 */
+  session_id: string;
+  /** 所属对话轮次/运行 ID。相同 run_id 的消息属于同一轮。 */
+  run_id: string;
+  /** 会话内连续递增的消息序号，从 1 开始。 */
+  sequence: number;
+  /** 消息角色：user、assistant 或 tool。 */
+  role: string;
+  /** 消息正文；工具消息通常为工具执行结果 JSON 文本。 */
+  content: string;
+  /** 创建时间，RFC 3339 UTC 时间戳。 */
+  created_at: string;
+  /** assistant 消息发起的工具调用列表。 */
+  tool_calls?: SessionMessages200ResponseMessagesItemTool_callsItem[];
+  /** tool 消息对应的工具调用 ID。 */
+  tool_call_id?: string;
+  /** tool 消息对应的工具名称。 */
+  tool_name?: string;
+  /** assistant 的模型思考内容。 */
+  reasoning_content?: string;
+  /** assistant 消息的 Responses API response ID。 */
+  response_id?: string;
+  /** assistant response 缓存到期时间戳。 */
+  response_cache_expires_at?: number;
+}
+
+export interface SessionMessages200Response {
+  /** 本页消息列表；按 sequence 升序排列。 */
+  messages: SessionMessages200ResponseMessagesItem[];
+  /** 在当前快照内是否仍有更早消息可读取。 */
+  has_more: boolean;
+  /** 本次读取固定使用的最大消息序号。后续分页必须携带。 */
+  snapshot_sequence: number;
 }

@@ -153,7 +153,8 @@ describe("App", () => {
     expect(await screen.findByText("可前往校园服务中心办理。")).toBeInTheDocument();
     expect(screen.getByText("已工作 1 秒")).toBeInTheDocument();
     expect(tongjiStudentService.SessionMessagesGET).toHaveBeenCalledWith({
-      limit: 100,
+      limit: 50,
+      offset: 0,
       session_id: "session-1",
     });
   });
@@ -184,7 +185,8 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(tongjiStudentService.SessionMessagesGET).toHaveBeenCalledWith({
-        limit: 100,
+        limit: 50,
+        offset: 0,
         session_id: "session-1",
       });
     });

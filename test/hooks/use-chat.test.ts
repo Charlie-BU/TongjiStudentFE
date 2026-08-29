@@ -6,7 +6,16 @@ const tongjiStudentService = vi.hoisted(() => ({
   SessionPOST: vi.fn(),
 }));
 
+const sessionHistory = vi.hoisted(() => ({
+  cacheSessionHistory: vi.fn(),
+  deleteCachedSessionHistory: vi.fn(),
+  fetchSessionHistory: vi.fn(),
+  getCachedSessionHistory: vi.fn(),
+  hasSameSessionMessages: vi.fn(),
+}));
+
 vi.mock("../../src/services/tongji-student", () => ({ tongjiStudentService }));
+vi.mock("../../src/services/session-history", () => sessionHistory);
 
 import { takeSseFrames, useChat } from "../../src/hooks/use-chat";
 import { addAnonymousSession, getAnonymousSessions } from "../../src/utils/anonymous-session";
@@ -16,6 +25,11 @@ describe("useChat SSE parser", () => {
     window.localStorage.clear();
     tongjiStudentService.SessionMessagesPOST.mockReset();
     tongjiStudentService.SessionPOST.mockReset();
+		sessionHistory.cacheSessionHistory.mockReset();
+		sessionHistory.deleteCachedSessionHistory.mockReset();
+		sessionHistory.fetchSessionHistory.mockReset();
+		sessionHistory.getCachedSessionHistory.mockReset();
+		sessionHistory.hasSameSessionMessages.mockReset();
   });
 
   it("应还原被任意网络分块截断的多个 SSE 事件", () => {
@@ -48,5 +62,23 @@ describe("useChat SSE parser", () => {
 
     expect(tongjiStudentService.SessionPOST).toHaveBeenCalledOnce();
     expect(getAnonymousSessions()[0]?.lastActiveAt).not.toBe("2026-08-10T10:00:00.000Z");
+  });
+
+  it("远端拒绝恢复时应清空并删除当前用户的缓存", async () => {
+    sessionHistory.getCachedSessionHistory.mockResolvedValue({
+      messages: [],
+      snapshotSequence: 3,
+    });
+    sessionHistory.fetchSessionHistory.mockRejectedValue(new Error("forbidden"));
+    sessionHistory.deleteCachedSessionHistory.mockResolvedValue(undefined);
+    const onSessionRestoreFailed = vi.fn();
+    const { result } = renderHook(() => useChat({ cacheScope: "user-001", onSessionRestoreFailed }));
+
+    await act(async () => {
+      await result.current.restoreSession("session-1");
+    });
+
+    expect(sessionHistory.deleteCachedSessionHistory).toHaveBeenCalledWith("session-1", "user-001");
+    expect(onSessionRestoreFailed).toHaveBeenCalledOnce();
   });
 });

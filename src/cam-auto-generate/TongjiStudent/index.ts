@@ -7,10 +7,6 @@ import type {
   Ping200Response,
   SessionHeaderRequest,
   Session200Response,
-  SessionMessagesQueryRequest,
-  SessionMessagesPathRequest,
-  SessionMessagesHeaderRequest,
-  SessionMessages200Response,
   TaskPlanPathRequest,
   TaskPlanHeaderRequest,
   TaskPlan200Response,
@@ -20,6 +16,9 @@ import type {
   UserBasicInfo200Response,
   SessionBodyRequest,
   SessionMessagesBodyRequest,
+  SessionMessagesPathRequest,
+  SessionMessagesHeaderRequest,
+  SessionMessages200Response,
   SessionRenameBodyRequest,
   SessionRenameHeaderRequest,
   SessionRename200Response,
@@ -27,6 +26,7 @@ import type {
   TongjiOauthToken200Response,
   SessionDeleteBodyRequest,
   SessionDeleteHeaderRequest,
+  SessionMessagesQueryRequest,
 } from './namespaces';
 
 export default class TongjiStudentService<T> {
@@ -84,25 +84,6 @@ export default class TongjiStudentService<T> {
     const method = 'GET';
     const data = undefined;
     const params = undefined;
-    const headers = { Authorization: _req['Authorization'] };
-    return this.request({ url, method, data, params, headers }, options);
-  }
-
-  /** 读取指定会话最近历史消息，结果按时间和消息序号从旧到新排列 */
-  SessionMessagesGET(
-    req: SessionMessagesQueryRequest &
-      SessionMessagesPathRequest &
-      SessionMessagesHeaderRequest,
-    options?: T,
-  ): Promise<SessionMessages200Response> {
-    const _req = req || {};
-    let url = this.genBaseURL('/v1/sessions/{session_id}/messages');
-    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
-      url = url.replace('{session_id}', String(_req['session_id']));
-    }
-    const method = 'GET';
-    const data = undefined;
-    const params = { limit: _req['limit'] };
     const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
   }
@@ -220,6 +201,29 @@ export default class TongjiStudentService<T> {
     const method = 'DELETE';
     const data = { session_id: _req['session_id'] };
     const params = undefined;
+    const headers = { Authorization: _req['Authorization'] };
+    return this.request({ url, method, data, params, headers }, options);
+  }
+
+  /** 读取指定会话的 canonical 历史消息 */
+  SessionMessagesGET(
+    req: SessionMessagesQueryRequest &
+      SessionMessagesPathRequest &
+      SessionMessagesHeaderRequest,
+    options?: T,
+  ): Promise<SessionMessages200Response> {
+    const _req = req || {};
+    let url = this.genBaseURL('/v1/sessions/{session_id}/messages');
+    if (_req['session_id'] !== undefined && _req['session_id'] !== null) {
+      url = url.replace('{session_id}', String(_req['session_id']));
+    }
+    const method = 'GET';
+    const data = undefined;
+    const params = {
+      limit: _req['limit'],
+      offset: _req['offset'],
+      snapshot_sequence: _req['snapshot_sequence'],
+    };
     const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
   }
