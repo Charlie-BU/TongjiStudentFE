@@ -239,7 +239,7 @@ function ChatApp() {
 
     const startOauth = useCallback((): void => {
         const baseURL = (
-            import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? ""
+            import.meta.env.VITE_TONGJI_STUDENT_DIRECT_BASE_URL ?? "/api"
         ).replace(/\/+$/, "");
         window.location.assign(`${baseURL}${TONGJI_OAUTH_AUTHORIZE_PATH}`);
     }, []);

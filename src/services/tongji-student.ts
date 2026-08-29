@@ -11,7 +11,7 @@ function getAuthorizationHeader(): Record<string, string> {
 
 export const tongjiStudentService =
     new TongjiStudentService<AxiosRequestConfig>({
-        baseURL: import.meta.env.VITE_TONGJI_STUDENT_BASE_URL,
+        baseURL: import.meta.env.VITE_TONGJI_STUDENT_DIRECT_BASE_URL ?? "/api",
         request: (config, options) =>
             axios
                 .request({

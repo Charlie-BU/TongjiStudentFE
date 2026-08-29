@@ -394,7 +394,7 @@ export function SessionSidebar({
 
 function getTongjiOauthAuthorizeUrl(): string {
     const baseURL = (
-        import.meta.env.VITE_TONGJI_STUDENT_BASE_URL ?? ""
+        import.meta.env.VITE_TONGJI_STUDENT_DIRECT_BASE_URL ?? "/api"
     ).replace(/\/+$/, "");
     return `${baseURL}${TONGJI_OAUTH_AUTHORIZE_PATH}`;
 }
