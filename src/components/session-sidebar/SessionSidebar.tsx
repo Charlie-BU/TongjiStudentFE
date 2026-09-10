@@ -295,6 +295,10 @@ export function SessionSidebar({
                                             isSelected
                                                 ? " session-list-row-selected"
                                                 : ""
+                                        }${
+                                            editingSession?.id === session.id
+                                                ? " session-list-row-editing"
+                                                : ""
                                         }`}
                                         key={session.id}
                                     >
@@ -304,6 +308,7 @@ export function SessionSidebar({
                                                 aria-label={`重命名 ${session.name}`}
                                                 autoFocus
                                                 className="session-list-item-input"
+                                                variant="borderless"
                                                 onBlur={() =>
                                                     void renameSession(session)
                                                 }
@@ -356,7 +361,15 @@ export function SessionSidebar({
                                                 </span>
                                             </Tooltip>
                                         )}
-                                        {userBasicInfo ? (
+                                        {session.id === streamingSessionId ? (
+                                            <span
+                                                aria-label={`正在生成 ${session.name}`}
+                                                className="session-list-item-loading"
+                                                role="status"
+                                            >
+                                                <LoadingOutlined aria-hidden="true" />
+                                            </span>
+                                        ) : userBasicInfo ? (
                                             <Dropdown
                                                 menu={{ items: menuItems }}
                                                 placement="bottomLeft"

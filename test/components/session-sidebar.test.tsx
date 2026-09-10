@@ -128,22 +128,22 @@ describe("SessionSidebar", () => {
     expect(await screen.findByText("新会话名")).toBeInTheDocument();
   });
 
-  it("应禁用正在生成会话的删除操作", async () => {
-    const user = userEvent.setup();
+  it("应在生成时用 loading 替换操作菜单，结束后恢复菜单", async () => {
     tongjiStudentService.SessionGET.mockResolvedValue({
       sessions: [
         { id: "session-4", name: "生成中的会话", last_active_at: "2026-08-10T10:00:00Z" },
       ],
     });
 
-    render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId="session-4" streamingSessionId="session-4" userBasicInfo={userBasicInfo} />);
+    const { rerender } = render(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId="session-4" streamingSessionId="session-4" userBasicInfo={userBasicInfo} />);
 
-    await user.click(await screen.findByRole("button", { name: "操作会话 生成中的会话" }));
-    const deleteItem = (await screen.findByText("删除会话")).closest('[role="menuitem"]');
-    expect(deleteItem).toHaveAttribute("aria-disabled", "true");
-    expect(deleteItem).toHaveAttribute("title", "正在工作中，请等待工作完成后删除");
-    await user.click(deleteItem!);
-    expect(tongjiStudentService.SessionDeleteDELETE).not.toHaveBeenCalled();
+    expect(await screen.findByRole("status", { name: "正在生成 生成中的会话" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "操作会话 生成中的会话" })).not.toBeInTheDocument();
+
+    rerender(<SessionSidebar createdSessions={[]} onNewChat={vi.fn()} onSessionSelect={vi.fn()} selectedSessionId="session-4" streamingSessionId={null} userBasicInfo={userBasicInfo} />);
+
+    expect(screen.queryByRole("status", { name: "正在生成 生成中的会话" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "操作会话 生成中的会话" })).toBeInTheDocument();
   });
 
   it("应在生成期间禁用新会话和其他会话切换", async () => {

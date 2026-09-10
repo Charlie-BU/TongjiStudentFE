@@ -171,7 +171,7 @@ function UserMessage({ question, startedAt }: Pick<ChatTurn, "question" | "start
     );
 }
 
-function AssistantMessage({ answer, startedAt }: Pick<ChatTurn, "answer" | "startedAt">) {
+function AssistantMessage({ answer, startedAt, state }: Pick<ChatTurn, "answer" | "startedAt" | "state">) {
     return (
         <div className="assistant-message-wrapper">
             <div className="message assistant-message">
@@ -185,13 +185,15 @@ function AssistantMessage({ answer, startedAt }: Pick<ChatTurn, "answer" | "star
                     </ReactMarkdown>
                 </div>
             </div>
-            <MessageCopyMeta
-                copyFirst
-                content={answer}
-                copiedLabel="回答"
-                startedAt={startedAt}
-                className="assistant-message-meta"
-            />
+            {state !== "streaming" && (
+                <MessageCopyMeta
+                    copyFirst
+                    content={answer}
+                    copiedLabel="回答"
+                    startedAt={startedAt}
+                    className="assistant-message-meta"
+                />
+            )}
         </div>
     );
 }
@@ -423,6 +425,7 @@ export function ChatArea({ chat }: ChatAreaProps) {
                                         <AssistantMessage
                                             answer={turn.answer}
                                             startedAt={turn.startedAt}
+                                            state={turn.state}
                                         />
                                     ) : null}
                                 </div>
@@ -525,5 +528,11 @@ function AgentActivity({
 // formatWorkDuration 将毫秒耗时格式化为面向用户的秒或分钟。
 function formatWorkDuration(durationMs: number): string {
     const seconds = Math.max(0, Math.floor(durationMs / 1000));
-    return seconds >= 60 ? `${Math.floor(seconds / 60)} 分` : `${seconds} 秒`;
+    if (seconds >= 60) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes} 分 ${remainingSeconds} 秒`;
+    }
+
+    return `${seconds} 秒`;
 }
