@@ -50,6 +50,7 @@ type SessionSidebarProps = {
     userBasicInfo?: UserBasicInfo200Response | null;
     onOauthRedirect?: (url: string) => void;
     onPageReload?: () => void;
+    onSessionsResolved?: (user: UserBasicInfo200Response) => void;
 };
 
 // SessionSidebar 展示当前用户最近活跃的持久会话。
@@ -64,6 +65,7 @@ export function SessionSidebar({
     userBasicInfo = null,
     onOauthRedirect = (url) => window.location.assign(url),
     onPageReload = () => window.location.reload(),
+    onSessionsResolved,
 }: SessionSidebarProps) {
     const [sessions, setSessions] = useState<SessionSummary[]>(() =>
         userBasicInfo
@@ -188,13 +190,14 @@ export function SessionSidebar({
             .finally(() => {
                 if (isActive) {
                     setIsLoading(false);
+                    onSessionsResolved?.(userBasicInfo);
                 }
             });
 
         return () => {
             isActive = false;
         };
-    }, [userBasicInfo]);
+    }, [userBasicInfo, onSessionsResolved]);
 
     return (
         <aside

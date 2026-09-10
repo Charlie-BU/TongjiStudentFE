@@ -36,11 +36,11 @@ describe("App", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("应装配主题与聊天输入页", () => {
+  it("应装配主题与聊天输入页", async () => {
     render(<App />);
 
     expect(screen.getByLabelText("输入校园问题")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "发送问题" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "发送问题" })).toBeDisabled();
     const feedbackLink = screen.getByRole("link", { name: "公测反馈" });
     expect(feedbackLink).toHaveAttribute(
       "href",
@@ -48,6 +48,32 @@ describe("App", () => {
     );
     expect(feedbackLink).toHaveAttribute("target", "_blank");
     expect(feedbackLink).toHaveAttribute("rel", "noreferrer");
+  });
+
+  it.each([false, true])("应等待 basic-info 和 sessions 都结束再显示页面（sessions 失败：%s）", async (fails) => {
+    let resolveUser!: (value: unknown) => void;
+    let resolveSessions!: (value: unknown) => void;
+    let rejectSessions!: (reason: unknown) => void;
+    tongjiStudentService.UserBasicInfoGET.mockImplementationOnce(() => new Promise((resolve) => { resolveUser = resolve; }));
+    tongjiStudentService.SessionGET.mockImplementationOnce(() => new Promise((resolve, reject) => {
+      resolveSessions = resolve;
+      rejectSessions = reject;
+    }));
+
+    render(<App />);
+    expect(screen.getByRole("status", { name: "正在加载用户信息和会话" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "发送问题" })).not.toBeInTheDocument();
+
+    await act(async () => resolveUser({ name: "测试同学", userId: "test-student-001", userTypeName: "本科生" }));
+    expect(screen.getByRole("status", { name: "正在加载用户信息和会话" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "发送问题" })).not.toBeInTheDocument();
+
+    await act(async () => {
+      if (fails) rejectSessions(new Error("network failure"));
+      else resolveSessions({ sessions: [] });
+    });
+    expect(screen.queryByRole("status", { name: "正在加载用户信息和会话" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发送问题" })).toBeVisible();
   });
 
   it("应在页面挂载时获取并展示用户基础信息", async () => {
@@ -58,7 +84,7 @@ describe("App", () => {
     expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
   });
 
-  it("应先展示缓存的用户信息并静默更新", async () => {
+  it("应在缓存用户信息刷新完成前保持 loading", async () => {
     window.localStorage.setItem(
       "tongji-user-basic-info",
       JSON.stringify({
@@ -76,7 +102,8 @@ describe("App", () => {
 
     render(<App />);
 
-    expect(screen.getByText("缓存同学")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "正在加载用户信息和会话" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "用户菜单" })).not.toBeInTheDocument();
     expect(tongjiStudentService.UserBasicInfoGET).toHaveBeenCalledWith({});
 
     await act(async () => {
@@ -132,10 +159,10 @@ describe("App", () => {
     expect(window.localStorage.getItem("tongji-session-list:student-001")).toBeNull();
   });
 
-  it("应在测试环境显示手动配置 Tongji Access Token 的入口", () => {
+  it("应在测试环境显示手动配置 Tongji Access Token 的入口", async () => {
     render(<App />);
 
-    expect(screen.getByRole("button", { name: "配置测试 Tongji Access Token" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "配置测试 Tongji Access Token" })).toBeInTheDocument();
   });
 
   it("应保存手动输入的 Tongji Access Token 后刷新页面", async () => {
@@ -151,9 +178,9 @@ describe("App", () => {
     expect(onSaved).toHaveBeenCalledOnce();
   });
 
-  it("应支持拖拽测试 Token 按钮且不触发弹窗", () => {
+  it("应支持拖拽测试 Token 按钮且不触发弹窗", async () => {
     render(<App />);
-    const trigger = screen.getByRole("button", { name: "配置测试 Tongji Access Token" });
+    const trigger = await screen.findByRole("button", { name: "配置测试 Tongji Access Token" });
     vi.spyOn(trigger, "getBoundingClientRect").mockReturnValue({
       bottom: 740,
       height: 40,
@@ -241,7 +268,7 @@ describe("App", () => {
         session_id: "session-1",
       });
     });
-    await user.click(screen.getByRole("button", { name: "New Chat" }));
+    await user.click(await screen.findByRole("button", { name: "New Chat" }));
 
     await act(async () => {
       resolveHistory!({

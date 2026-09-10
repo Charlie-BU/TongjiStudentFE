@@ -6,7 +6,7 @@ import {
     type PointerEvent,
     type ReactNode,
 } from "react";
-import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { LoadingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { Button, ConfigProvider, theme, Watermark } from "antd";
 import { SessionSidebar } from "./components/session-sidebar/SessionSidebar";
 import { TestAccessTokenControl } from "./components/test-access-token/TestAccessTokenControl";
@@ -109,9 +109,11 @@ function ChatApp() {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [userBasicInfo, setUserBasicInfo] =
         useState<UserBasicInfo200Response | null>(getCachedUserBasicInfo);
-    const [isUserInfoResolved, setIsUserInfoResolved] = useState(
-        () => getCachedUserBasicInfo() !== null,
-    );
+    const [isUserInfoResolved, setIsUserInfoResolved] = useState(false);
+    const [sessionsResolvedFor, setSessionsResolvedFor] =
+        useState<UserBasicInfo200Response | null>(null);
+    const isBootstrapLoading = !isUserInfoResolved ||
+        (userBasicInfo !== null && sessionsResolvedFor !== userBasicInfo);
     const [isLoginReminderOpen, setIsLoginReminderOpen] = useState(false);
     const handleSessionRestoreFailed = useCallback((): void => {
         openNewChat();
@@ -321,91 +323,99 @@ function ChatApp() {
                 },
             }}
         >
-            <AppWatermark
-                content={
-                    userBasicInfo
-                        ? `${userBasicInfo?.userId} · ${userBasicInfo?.name}`
-                        : "Guest"
-                }
-            >
-                <ThemeCssVariables />
-                <div
-                    className="chat-app-layout"
-                    style={
-                        {
-                            "--session-sidebar-width": `${sidebarWidth}px`,
-                        } as CSSProperties
+            {isBootstrapLoading && (
+                <div className="app-bootstrap-loading" role="status" aria-label="正在加载用户信息和会话" aria-busy="true">
+                    <LoadingOutlined aria-hidden="true" />
+                </div>
+            )}
+            <div hidden={isBootstrapLoading}>
+                <AppWatermark
+                    content={
+                        userBasicInfo
+                            ? `${userBasicInfo?.userId} · ${userBasicInfo?.name}`
+                            : "Guest"
                     }
                 >
-                    <SessionSidebar
-                        createdSessions={createdSessions}
-                        isMobileOpen={isMobileSidebarOpen}
-                        onNewChat={handleNewChat}
-                        onSessionDeleted={handleSessionDeleted}
-                        onSessionSelect={handleSessionSelect}
-                        selectedSessionId={sessionId}
-                        streamingSessionId={
-                            chat.isStreaming ? chat.activeSessionId : null
-                        }
-                        userBasicInfo={userBasicInfo}
-                    />
-                    {isMobileSidebarOpen ? (
-                        <div
-                            aria-hidden="true"
-                            className="mobile-sidebar-backdrop"
-                            onClick={() => setIsMobileSidebarOpen(false)}
-                        />
-                    ) : null}
-                    <Button
-                        aria-label={
-                            isMobileSidebarOpen
-                                ? "收起会话侧导"
-                                : "展开会话侧导"
-                        }
-                        className={`mobile-sidebar-toggle${
-                            isMobileSidebarOpen
-                                ? " mobile-sidebar-toggle-open"
-                                : ""
-                        }`}
-                        icon={
-                            isMobileSidebarOpen ? (
-                                <MenuFoldOutlined />
-                            ) : (
-                                <MenuUnfoldOutlined />
-                            )
-                        }
-                        onClick={() =>
-                            setIsMobileSidebarOpen((isOpen) => !isOpen)
-                        }
-                        type="text"
-                    />
+                    <ThemeCssVariables />
                     <div
-                        aria-label="调整会话侧导宽度"
-                        aria-orientation="vertical"
-                        className="session-sidebar-resize-handle"
-                        onPointerDown={startSidebarResize}
-                        role="separator"
-                    />
-                    {sessionId ? (
-                        <ChatArea chat={chat} />
-                    ) : (
-                        <WelcomePage
-                            chat={chat}
-                            isLoggedIn={userBasicInfo !== null}
-                            onLoginRequired={openLoginReminder}
-                            username={userBasicInfo?.name}
+                        className="chat-app-layout"
+                        style={
+                            {
+                                "--session-sidebar-width": `${sidebarWidth}px`,
+                            } as CSSProperties
+                        }
+                    >
+                        <SessionSidebar
+                            createdSessions={createdSessions}
+                            isMobileOpen={isMobileSidebarOpen}
+                            onNewChat={handleNewChat}
+                            onSessionDeleted={handleSessionDeleted}
+                            onSessionSelect={handleSessionSelect}
+                            selectedSessionId={sessionId}
+                            streamingSessionId={
+                                chat.isStreaming ? chat.activeSessionId : null
+                            }
+                            userBasicInfo={isUserInfoResolved ? userBasicInfo : null}
+                            onSessionsResolved={setSessionsResolvedFor}
                         />
-                    )}
-                </div>
-                <LoginReminderModal
-                    onCancel={() => setIsLoginReminderOpen(false)}
-                    onLogin={startOauth}
-                    open={isLoginReminderOpen}
-                />
-                {import.meta.env.TEST_ENV === "true" ? (
-                    <TestAccessTokenControl />
-                ) : null}
-            </AppWatermark>
+                        {isMobileSidebarOpen ? (
+                            <div
+                                aria-hidden="true"
+                                className="mobile-sidebar-backdrop"
+                                onClick={() => setIsMobileSidebarOpen(false)}
+                            />
+                        ) : null}
+                        <Button
+                            aria-label={
+                                isMobileSidebarOpen
+                                    ? "收起会话侧导"
+                                    : "展开会话侧导"
+                            }
+                            className={`mobile-sidebar-toggle${
+                                isMobileSidebarOpen
+                                    ? " mobile-sidebar-toggle-open"
+                                    : ""
+                            }`}
+                            icon={
+                                isMobileSidebarOpen ? (
+                                    <MenuFoldOutlined />
+                                ) : (
+                                    <MenuUnfoldOutlined />
+                                )
+                            }
+                            onClick={() =>
+                                setIsMobileSidebarOpen((isOpen) => !isOpen)
+                            }
+                            type="text"
+                        />
+                        <div
+                            aria-label="调整会话侧导宽度"
+                            aria-orientation="vertical"
+                            className="session-sidebar-resize-handle"
+                            onPointerDown={startSidebarResize}
+                            role="separator"
+                        />
+                        {sessionId ? (
+                            <ChatArea chat={chat} />
+                        ) : (
+                            <WelcomePage
+                                chat={chat}
+                                isLoggedIn={userBasicInfo !== null}
+                                onLoginRequired={openLoginReminder}
+                                username={userBasicInfo?.name}
+                            />
+                        )}
+                    </div>
+                    <LoginReminderModal
+                        onCancel={() => setIsLoginReminderOpen(false)}
+                        onLogin={startOauth}
+                        open={isLoginReminderOpen}
+                    />
+                    {import.meta.env.TEST_ENV === "true" ? (
+                        <TestAccessTokenControl />
+                    ) : null}
+                </AppWatermark>
+            </div>
         </ConfigProvider>
     );
 }

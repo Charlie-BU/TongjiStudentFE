@@ -41,6 +41,16 @@ body {
     overflow: hidden;
 }
 
+.app-bootstrap-loading {
+    display: grid;
+    position: fixed;
+    inset: 0;
+    place-items: center;
+    background: #f7f7f7;
+    color: #999;
+    font-size: 28px;
+}
+
 .session-sidebar-resize-handle {
     position: relative;
     z-index: 2;
