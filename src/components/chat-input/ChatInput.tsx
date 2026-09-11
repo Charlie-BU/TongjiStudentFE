@@ -1,16 +1,19 @@
-import type { KeyboardEvent } from "react";
+import { useState, type KeyboardEvent } from "react";
+import type { ModelTier } from "../../hooks/use-chat";
 import {
   ArrowUpOutlined,
-  PaperClipOutlined,
-  UserOutlined,
+  CheckOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Input, Tooltip } from "antd";
+import { IconDown } from "@arco-design/web-react/icon";
+import { Button, Card, Dropdown, Input } from "antd";
 import "./ChatInput.css";
 
 const { TextArea } = Input;
 
 // ChatInputProps 定义聊天输入组件所需的受控状态与操作。
 type ChatInputProps = {
+  modelTier: ModelTier;
+  onModelTierChange: (tier: ModelTier) => void;
   value: string;
   disabled: boolean;
   onChange: (value: string) => void;
@@ -18,17 +21,20 @@ type ChatInputProps = {
   onStop: () => void;
 };
 
-// reservedButtonClick 为后续的提及和附件能力预留点击入口。
-const reservedButtonClick = (): void => undefined;
+const modelTiers = ["lite", "pro", "max"] as const;
+const modelTierLabels: Record<ModelTier, string> = { lite: "Lite", pro: "Pro", max: "Max" };
 
-// ChatInput 提供消息输入、预留工具入口及发送控制。
+// ChatInput 提供消息输入、模型档位选择及发送控制。
 export function ChatInput({
+  modelTier,
+  onModelTierChange,
   value,
   disabled,
   onChange,
   onSubmit,
   onStop,
 }: ChatInputProps) {
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   // handleInputKeyDown 支持 Enter 发送、Shift+Enter 换行。
   function handleInputKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
     if (
@@ -58,28 +64,47 @@ export function ChatInput({
         />
         <div className="chat-input-toolbar">
           <div className="chat-input-tools">
-            <Tooltip title="敬请期待" arrow={false}>
+            <Dropdown
+              autoFocus
+              disabled={disabled}
+              open={!disabled && modelMenuOpen}
+              onOpenChange={setModelMenuOpen}
+              placement="topLeft"
+              trigger={["click"]}
+              classNames={{ root: "chat-model-dropdown" }}
+              menu={{
+                selectable: true,
+                selectedKeys: [modelTier],
+                items: modelTiers.map((tier) => ({
+                  key: tier,
+                  label: (
+                    <span className="chat-model-option">
+                      <span>{modelTierLabels[tier]}</span>
+                      {modelTier === tier && <CheckOutlined aria-hidden="true" />}
+                    </span>
+                  ),
+                })),
+                onClick: ({ key }) => {
+                  if (key === "lite" || key === "pro" || key === "max") {
+                    onModelTierChange(key);
+                  }
+                  setModelMenuOpen(false);
+                },
+              }}
+            >
               <Button
-                aria-label="提及内容"
-                className="chat-input-tool-button"
+                aria-label={`模型档位：${modelTierLabels[modelTier]}`}
+                aria-haspopup="menu"
+                aria-expanded={!disabled && modelMenuOpen}
+                className="chat-model-button"
+                disabled={disabled}
+                variant="text"
                 color="default"
-                icon={<UserOutlined />}
-                onClick={reservedButtonClick}
-                shape="circle"
-                variant="outlined"
-              />
-            </Tooltip>
-            <Tooltip title="敬请期待" arrow={false}>
-              <Button
-                aria-label="添加附件"
-                className="chat-input-tool-button"
-                color="default"
-                icon={<PaperClipOutlined />}
-                onClick={reservedButtonClick}
-                shape="circle"
-                variant="outlined"
-              />
-            </Tooltip>
+              >
+                {modelTierLabels[modelTier]}
+                <IconDown className="chat-model-chevron" aria-hidden="true" />
+              </Button>
+            </Dropdown>
           </div>
           {disabled ? (
             <Button

@@ -137,6 +137,8 @@ export function WelcomePage({
                     </span>
                 </p>
                 <ChatInput
+                    modelTier={chat.modelTier}
+                    onModelTierChange={chat.setModelTier}
                     disabled={isStreaming}
                     onChange={setInput}
                     onStop={stopStreaming}

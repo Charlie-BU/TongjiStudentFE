@@ -350,7 +350,7 @@ describe("ChatArea", () => {
       completeStream?.();
       await Promise.resolve();
     });
-    expect(screen.getByText("已工作 1 分")).toBeInTheDocument();
+    expect(screen.getByText("已工作 1 分 1 秒")).toBeInTheDocument();
   });
 });
 

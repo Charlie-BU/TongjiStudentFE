@@ -308,7 +308,7 @@ describe("App", () => {
     await waitFor(() => {
       expect(tongjiStudentService.SessionPOST).toHaveBeenCalledWith({});
       expect(tongjiStudentService.SessionMessagesPOST).toHaveBeenCalledWith(
-        { message: "查询校园卡", session_id: "new-session-1" },
+        { message: "查询校园卡", model_tier: "lite", session_id: "new-session-1" },
         expect.any(Object),
       );
     });

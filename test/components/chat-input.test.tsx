@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { ModelTier } from "../../src/hooks/use-chat";
 import { ChatInput } from "../../src/components/chat-input/ChatInput";
 
 // ControlledChatInput 为输入组件提供与生产环境一致的受控值。
@@ -15,9 +16,12 @@ function ControlledChatInput({
   onSubmit?: () => void;
 }) {
   const [value, setValue] = useState("");
+ const [modelTier, setModelTier] = useState<ModelTier>("lite");
 
   return (
     <ChatInput
+      modelTier={modelTier}
+      onModelTierChange={setModelTier}
       disabled={disabled}
       onChange={setValue}
       onStop={onStop}
@@ -28,6 +32,19 @@ function ControlledChatInput({
 }
 
 describe("ChatInput", () => {
+ it("应通过菜单选择模型档位并显示选中项", async () => {
+  const user = userEvent.setup();
+  render(<ControlledChatInput />);
+  expect(screen.queryByRole("button", {name:"提及内容"})).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", {name:"添加附件"})).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", {name:"模型档位：Lite"}));
+  await user.click(await screen.findByRole("menuitem", {name:"Pro"}));
+  expect(screen.getByRole("button", {name:"模型档位：Pro"})).toHaveAttribute("aria-expanded", "false");
+  await user.click(screen.getByRole("button", {name:"模型档位：Pro"}));
+  expect(await screen.findByRole("menuitem", {name:"Pro"})).toHaveClass("ant-dropdown-menu-item-selected");
+  await user.click(screen.getByRole("menuitem", {name:"Max"}));
+  expect(screen.getByRole("button", {name:"模型档位：Max"})).toBeInTheDocument();
+ });
   it("应在输入内容后启用发送，并支持点击和 Enter 提交", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();
@@ -65,8 +82,7 @@ describe("ChatInput", () => {
     render(<ControlledChatInput disabled onStop={onStop} />);
 
     expect(screen.getByLabelText("输入校园问题")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "提及内容" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "添加附件" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "模型档位：Lite" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "停止生成" }));
     expect(onStop).toHaveBeenCalledTimes(1);

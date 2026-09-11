@@ -437,6 +437,8 @@ export function ChatArea({ chat }: ChatAreaProps) {
             </section>
 
             <ChatInput
+                modelTier={chat.modelTier}
+                onModelTierChange={chat.setModelTier}
                 disabled={isStreaming}
                 onChange={setInput}
                 onStop={stopStreaming}
@@ -459,8 +461,8 @@ function AgentActivity({
     const activityLabel =
         turn.error ??
         (!turn.answer && turn.state === "aborted"
-              ? "本轮回答已停止。"
-              : `已工作 ${formatWorkDuration(elapsedMs ?? 0)}`);
+            ? "本轮回答已停止。"
+            : `已工作 ${formatWorkDuration(elapsedMs ?? 0)}`);
 
     if (turn.activities.length === 0 && !turn.reasoning && !turn.error) {
         return null;

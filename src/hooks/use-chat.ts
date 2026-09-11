@@ -58,6 +58,8 @@ export type SessionSummary = {
     name: string;
 };
 
+export type ModelTier = "lite" | "pro" | "max";
+
 const MAX_RATE_LIMIT_RETRIES = 3;
 const RATE_LIMIT_RETRY_DELAY_MS = 3000;
 
@@ -79,6 +81,7 @@ export function useChat({
     onSessionRestoreFailed,
 }: UseChatOptions = {}) {
     const [input, setInput] = useState("");
+    const [modelTier, setModelTier] = useState<ModelTier>("lite");
     const [turns, setTurns] = useState<ChatTurn[]>([]);
     const [isStreaming, setIsStreaming] = useState(false);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -120,6 +123,7 @@ export function useChat({
             while (true) {
                 const isRateLimited = await streamQuestion(
                     question,
+                    modelTier,
                     sessionId,
                     turnId,
                     controller,
@@ -298,6 +302,8 @@ export function useChat({
 
     return {
         activeSessionId,
+        modelTier,
+        setModelTier,
         input,
         isStreaming,
         restoreSession,
@@ -313,6 +319,7 @@ export type ChatController = ReturnType<typeof useChat>;
 
 async function streamQuestion(
     question: string,
+    modelTier: ModelTier,
     sessionId: string,
     turnId: string,
     controller: AbortController,
@@ -365,7 +372,7 @@ async function streamQuestion(
     };
 
     await tongjiStudentService.SessionMessagesPOST(
-        { message: question, session_id: sessionId },
+        { message: question, model_tier: modelTier, session_id: sessionId },
         {
             adapter: "xhr",
             headers: { Accept: "text/event-stream" },

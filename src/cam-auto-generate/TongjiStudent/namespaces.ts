@@ -12,6 +12,11 @@ export interface SessionHeaderRequest {
   Authorization?: string;
 }
 
+export interface Session200Response {
+  /** session 列表 */
+  sessions: Session200ResponseSessionsItem[];
+}
+
 export interface Session200ResponseSessionsItem {
   /** session id */
   id: string;
@@ -25,11 +30,6 @@ export interface Session200ResponseSessionsItem {
   last_active_at: string;
 }
 
-export interface Session200Response {
-  /** session 列表 */
-  sessions: Session200ResponseSessionsItem[];
-}
-
 export interface TaskPlanPathRequest {
   /** 目标会话 ID */
   session_id: string;
@@ -40,13 +40,8 @@ export interface TaskPlanHeaderRequest {
   Authorization?: string;
 }
 
-export interface TaskPlan200ResponsePlanItemTasksItem {
-  /** 任务唯一 ID */
-  id: string;
-  /** 任务描述 */
-  desc: string;
-  /** 任务状态： pending 、 in_progress 、 done 、 failed */
-  status: string;
+export interface TaskPlan200Response {
+  plan?: TaskPlan200ResponsePlanItem[];
 }
 
 export interface TaskPlan200ResponsePlanItem {
@@ -60,8 +55,13 @@ export interface TaskPlan200ResponsePlanItem {
   tasks: TaskPlan200ResponsePlanItemTasksItem[];
 }
 
-export interface TaskPlan200Response {
-  plan?: TaskPlan200ResponsePlanItem[];
+export interface TaskPlan200ResponsePlanItemTasksItem {
+  /** 任务唯一 ID */
+  id: string;
+  /** 任务描述 */
+  desc: string;
+  /** 任务状态： pending 、 in_progress 、 done 、 failed */
+  status: string;
 }
 
 export interface TaskPlan404Response {
@@ -117,6 +117,8 @@ export interface SessionMessagesHeaderRequest {
 export interface SessionMessagesBodyRequest {
   /** 本轮用户输入，不能为空字符串 */
   message: string;
+  /** 模型档位，只允许：lite、pro、max；缺省时默认为 lite */
+  model_tier?: string;
 }
 
 export interface SessionMessages200Response {
@@ -206,29 +208,16 @@ export interface SessionMessagesHeaderRequest {
   Authorization?: string;
 }
 
-export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
-  /** 工具/函数名称。 */
-  name: string;
-  /** 工具参数的 JSON 字符串。 */
-  arguments: string;
-}
-
-export interface SessionMessages200ResponseMessagesItemTool_callsItem {
-  /** 工具调用 ID；tool 消息的 tool_call_id 对应此值。 */
-  id: string;
-  /** 同一 assistant 消息内的工具调用顺序。 */
-  index: number;
-  /** 工具调用类型，如 function_call。 */
-  type: string;
-  /** 函数型工具调用详情。 */
-  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
+export interface SessionMessages200Response {
+  /** 本页消息列表；按 sequence 升序排列。 */
+  messages: SessionMessages200ResponseMessagesItem[];
+  /** 在当前快照内是否仍有更早消息可读取。 */
+  has_more: boolean;
+  /** 本次读取固定使用的最大消息序号。后续分页必须携带。 */
+  snapshot_sequence: number;
 }
 
 export interface SessionMessages200ResponseMessagesItem {
-  /** 消息唯一 ID。 */
-  id: string;
-  /** 所属会话 ID。 */
-  session_id: string;
   /** 所属对话轮次/运行 ID。相同 run_id 的消息属于同一轮。 */
   run_id: string;
   /** 会话内连续递增的消息序号，从 1 开始。 */
@@ -241,6 +230,12 @@ export interface SessionMessages200ResponseMessagesItem {
   created_at: string;
   /** assistant 消息发起的工具调用列表。 */
   tool_calls?: SessionMessages200ResponseMessagesItemTool_callsItem[];
+  /** 该消息对应的模型档位，只支持：lite、pro、max。 */
+  model_tier?: string;
+  /** 该消息对应的模型 id。 */
+  model_id?: string;
+  /** 消息唯一 ID。 */
+  id: string;
   /** tool 消息对应的工具调用 ID。 */
   tool_call_id?: string;
   /** tool 消息对应的工具名称。 */
@@ -251,13 +246,24 @@ export interface SessionMessages200ResponseMessagesItem {
   response_id?: string;
   /** assistant response 缓存到期时间戳。 */
   response_cache_expires_at?: number;
+  /** 所属会话 ID。 */
+  session_id: string;
 }
 
-export interface SessionMessages200Response {
-  /** 本页消息列表；按 sequence 升序排列。 */
-  messages: SessionMessages200ResponseMessagesItem[];
-  /** 在当前快照内是否仍有更早消息可读取。 */
-  has_more: boolean;
-  /** 本次读取固定使用的最大消息序号。后续分页必须携带。 */
-  snapshot_sequence: number;
+export interface SessionMessages200ResponseMessagesItemTool_callsItem {
+  /** 同一 assistant 消息内的工具调用顺序。 */
+  index: number;
+  /** 工具调用类型，如 function_call。 */
+  type: string;
+  /** 函数型工具调用详情。 */
+  function?: SessionMessages200ResponseMessagesItemTool_callsItemFunction;
+  /** 工具调用 ID；tool 消息的 tool_call_id 对应此值。 */
+  id: string;
+}
+
+export interface SessionMessages200ResponseMessagesItemTool_callsItemFunction {
+  /** 工具/函数名称。 */
+  name: string;
+  /** 工具参数的 JSON 字符串。 */
+  arguments: string;
 }

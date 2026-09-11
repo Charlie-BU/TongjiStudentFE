@@ -69,25 +69,69 @@
   gap: 8px;
 }
 
-.chat-input-tool-button.ant-btn {
-  width: 36px;
-  height: 36px;
-  border-color: var(--ant-color-border-secondary);
-  color: var(--ant-color-text-secondary);
-  font-size: 17px;
-  font-weight: 600;
+.chat-model-button.ant-btn {
+  height: 34px;
+  padding: 0 12px;
+  gap: 8px;
+  border: none !important;
+  border-radius: 999px;
+  background: transparent !important;
+  color: var(--ant-color-text-secondary) !important;
+  font-size: 14px;
+  box-shadow: none !important;
 }
 
-.chat-input-tool-button.ant-btn.ant-btn-variant-outlined.ant-btn-color-default:not(:disabled):not(.ant-btn-disabled):hover {
-  color: var(--ant-color-text-secondary);
-  background: var(--ant-color-fill-secondary);
-  border-color: var(--ant-color-border-secondary);
+.chat-model-button.ant-btn:not(:disabled):hover,
+.chat-model-button.ant-btn:not(:disabled):active,
+.chat-model-button.ant-btn:not(:disabled)[aria-expanded="true"] {
+  background: var(--ant-color-fill-tertiary) !important;
 }
 
-.chat-input-tool-button.ant-btn.ant-btn-variant-outlined.ant-btn-color-default:not(:disabled):not(.ant-btn-disabled):active {
-  color: var(--ant-color-text-secondary);
-  background: var(--ant-color-fill);
-  border-color: var(--ant-color-border-secondary);
+.chat-model-button.ant-btn:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.chat-model-button .chat-model-chevron {
+  color: inherit;
+  font-size: 12px;
+}
+
+.chat-model-dropdown .ant-dropdown-menu {
+  min-width: 160px;
+  padding: 6px;
+  border: none;
+  border-radius: 16px;
+  background: var(--ant-color-bg-container);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 6%);
+}
+
+.chat-model-dropdown .ant-dropdown-menu .ant-dropdown-menu-item {
+  padding: 8px 12px;
+  border: none !important;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ant-color-text) !important;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.chat-model-dropdown .ant-dropdown-menu .ant-dropdown-menu-item-selected {
+  background: transparent;
+}
+
+.chat-model-dropdown .ant-dropdown-menu .ant-dropdown-menu-item:hover,
+.chat-model-dropdown .ant-dropdown-menu .ant-dropdown-menu-item:active,
+.chat-model-dropdown .ant-dropdown-menu .ant-dropdown-menu-item-active {
+  background: var(--ant-color-fill-tertiary);
+}
+
+.chat-model-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
 }
 
 .chat-input-send-button.ant-btn {

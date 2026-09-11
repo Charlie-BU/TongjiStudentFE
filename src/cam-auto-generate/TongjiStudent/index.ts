@@ -157,7 +157,7 @@ export default class TongjiStudentService<T> {
       url = url.replace('{session_id}', String(_req['session_id']));
     }
     const method = 'POST';
-    const data = { message: _req['message'] };
+    const data = { message: _req['message'], model_tier: _req['model_tier'] };
     const params = undefined;
     const headers = { Authorization: _req['Authorization'] };
     return this.request({ url, method, data, params, headers }, options);
