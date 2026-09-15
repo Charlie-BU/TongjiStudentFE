@@ -392,7 +392,7 @@ function toServerEvent(event: TestStreamEvent): { type: string; data: Record<str
     case "status":
       return { type: "agent.status", data: { label: event.label, detail: event.detail } };
     case "reasoning":
-      return { type: "assistant.reasoning", data: { text: event.text } };
+      return { type: "assistant.reasoning", data: { delta: event.text } };
     case "tool_started":
       return { type: "tool.call.started", data: { id: event.id, label: event.label } };
     case "delta":

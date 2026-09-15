@@ -74,6 +74,65 @@ describe("useChat SSE parser", () => {
     expect(second.remainder).toBe("");
   });
 
+  it("应追加推理增量、忽略重复序号，并隔离不同轮次", async () => {
+    tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "delta-session" });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(async (_request, options) => {
+      const events = [
+        { seq: 1, type: "assistant.reasoning", data: { delta: "先查" } },
+        { seq: 2, type: "assistant.reasoning", data: { delta: "课表" } },
+        { seq: 2, type: "assistant.reasoning", data: { delta: "课表" } },
+        { seq: 3, type: "assistant.reasoning", data: { delta: "", text: "不得回退成快照" } },
+        { seq: 4, type: "tool.call.started", data: { call_id: "call-1", tool: "lookup" } },
+        { seq: 5, type: "assistant.reasoning", data: { delta: "再分析" } },
+        { seq: 6, type: "assistant.delta", data: { text: "完成" } },
+        { seq: 7, type: "run.completed", data: {} },
+      ];
+      const payload = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("");
+      // 模拟网络分块落在事件中间，Axios 每次提供累计响应。
+      for (const end of [17, 93, payload.length]) {
+        options.onDownloadProgress({ event: { target: { responseText: payload.slice(0, end) } } });
+      }
+    });
+    const { result } = renderHook(() => useChat());
+    for (const question of ["第一轮", "第二轮"]) {
+      await act(async () => { await result.current.submitQuestion(question); });
+    }
+    expect(result.current.turns).toHaveLength(2);
+    for (const turn of result.current.turns) {
+      expect(turn.reasoning).toBe("先查课表再分析");
+      expect(turn.answer).toBe("完成");
+      expect(turn.state).toBe("completed");
+    }
+  });
+
+  it("应忽略没有字符串 delta 的推理事件", async () => {
+    tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "legacy-session" });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(async (_request, options) => {
+      const payload = [{ delta: "已有推理" }, { text: "旧快照" }, {}, { delta: null }, { delta: 123 }].map((data) =>
+        `data: ${JSON.stringify({ type: "assistant.reasoning", data })}\n\n`,
+      ).join("");
+      options.onDownloadProgress({ event: { target: { responseText: payload } } });
+    });
+    const { result } = renderHook(() => useChat());
+    await act(async () => { await result.current.submitQuestion("旧服务"); });
+    expect(result.current.turns[0].reasoning).toBe("已有推理");
+  });
+
+  it("恢复历史时应合并同轮多次模型调用的推理，与增量展示一致", async () => {
+    sessionHistory.getCachedSessionHistory.mockResolvedValue(null);
+    sessionHistory.cacheSessionHistory.mockResolvedValue(undefined);
+    sessionHistory.fetchSessionHistory.mockResolvedValue({ messages: [
+      { role: "user", run_id: "run-1", sequence: 1, content: "查询课表" },
+      { role: "assistant", run_id: "run-1", sequence: 2, reasoning_content: "先查课表", content: "" },
+      { role: "tool", run_id: "run-1", sequence: 3, content: "测试结果" },
+      { role: "assistant", run_id: "run-1", sequence: 4, reasoning_content: "再分析", content: "完成" },
+    ] });
+    const { result } = renderHook(() => useChat());
+    await act(async () => { await result.current.restoreSession("history-session"); });
+    expect(result.current.turns[0].reasoning).toBe("先查课表再分析");
+    expect(result.current.turns[0].answer).toBe("完成");
+  });
+
   it("应在复用匿名会话发送消息时更新其最近活跃时间", async () => {
     tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "anonymous-1" });
     tongjiStudentService.SessionMessagesPOST.mockResolvedValue({});

@@ -39,7 +39,7 @@ export type ChatTurn = {
 
 type ChatStreamEvent =
     | { type: "status"; label: string; detail?: string }
-    | { type: "reasoning"; text: string }
+    | { type: "reasoning_delta"; text: string }
     | { type: "tool_started"; id: string; label: string }
     | { type: "tool_completed"; id: string; label: string; durationMs?: number }
     | { type: "delta"; text: string }
@@ -470,10 +470,10 @@ function mapServerEvent(event: ServerEvent): ChatStreamEvent | null {
                 detail: readOptionalText(data, ["detail", "description"]),
             };
         case "assistant.reasoning":
-            return {
-                type: "reasoning",
-                text: readText(data, ["text", "content", "reasoning_content"]),
-            };
+            if (typeof data.delta === "string") {
+                return { type: "reasoning_delta", text: data.delta };
+            }
+            return null;
         case "assistant.delta":
             return {
                 type: "delta",
@@ -551,8 +551,8 @@ function updateTurn(
                     },
                 ],
             };
-        case "reasoning":
-            return { ...turn, reasoning: event.text };
+        case "reasoning_delta":
+            return { ...turn, reasoning: turn.reasoning + event.text };
         case "tool_started":
             return {
                 ...turn,
@@ -695,7 +695,7 @@ function restoreChatTurns(response: unknown): ChatTurn[] {
 
         if (message.role === "assistant") {
             turn.answer += message.content;
-            turn.reasoning ||= message.reasoning;
+            turn.reasoning += message.reasoning;
             for (const toolCall of message.toolCalls) {
                 turn.activities.push({
                     id: toolCall.id,
