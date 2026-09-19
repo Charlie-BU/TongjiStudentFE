@@ -230,7 +230,7 @@
 
 ### 改动概览
 
-- `useChat` 读取 `run.failed` 的 `status_code/statusCode`；仅当值为 `429` 时，最多等待 3 秒后自动重试 3 次，超过上限后展示“模型请求次数超限，请稍后重试。”。
+- `useChat` 读取 `run.failed` 的 `status_code/statusCode`；仅当值为 `429` 时，最多等待 3 秒后自动重试 3 次，超过上限后展示“模型请求次数超限，请切换模型档位或稍后重试。”。
 - 抽出 `streamQuestion` 承担单次 SSE 消费，重试前清空本次尚未完成的回答与推理、完成已有活动，并写入当前重试进度；`waitForRateLimitRetry` 监听同一 `AbortSignal`，已取消时立即返回。
 - `SessionSidebar` 在存在 `streamingSessionId` 时禁用 New Chat 与非当前会话选择按钮，并通过 `Tooltip` 说明需要等待当前会话完成；当前会话及既有删除禁用逻辑保持原语义。
 - 新增回归测试：覆盖 429 的三次重试与最终失败、重试等待期间的停止生成、生成期间新建/切换会话无副作用及提示文案；测试统一在 `afterEach` 恢复 fake timer。

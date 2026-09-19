@@ -32,6 +32,21 @@ describe("ChatArea", () => {
     tongjiStudentService.SessionMessagesPOST.mockReset();
   });
 
+  it("瑞幸支付二维码和完整链接可展示，长订单号不截断", async () => {
+    const user = userEvent.setup();
+    const url = "https://example.com/luckin/qr?order=1234567890123456789&signature=full-value";
+    mockSseEvents([
+      { type: "delta", text: `订单号：1234567890123456789\n\n![支付二维码](${url})\n[打开支付二维码](${url})` },
+      { type: "completed" },
+    ]);
+    render(<ChatAreaHarness />);
+    await user.type(screen.getByLabelText("输入校园问题"), "查看支付二维码");
+    await user.click(screen.getByRole("button", { name: "发送问题" }));
+    expect(await screen.findByRole("img", { name: "支付二维码" })).toHaveAttribute("src", url);
+    expect(screen.getByRole("link", { name: "打开支付二维码" })).toHaveAttribute("href", url);
+    expect(screen.getByText("订单号：1234567890123456789")).toBeInTheDocument();
+  });
+
   it("应从文本输入创建问题，并将 Agent 工作过程和最终回答分开呈现", async () => {
     const user = userEvent.setup();
     mockSseEvents([
@@ -281,7 +296,7 @@ describe("ChatArea", () => {
     }
 
     expect(
-      screen.getByText("模型请求次数超限，请稍后重试。"),
+      screen.getByText("模型请求次数超限，请切换模型档位或稍后重试。"),
     ).toBeInTheDocument();
     expect(screen.queryByText("生成失败，请稍后重试。")).not.toBeInTheDocument();
   });

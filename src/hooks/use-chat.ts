@@ -139,7 +139,7 @@ export function useChat({
                             turn.id === turnId
                                 ? {
                                       ...turn,
-                                      error: "模型请求次数超限，请稍后重试。",
+                                      error: "模型请求次数超限，请切换模型档位或稍后重试。",
                                       state: "failed",
                                   }
                                 : turn,
