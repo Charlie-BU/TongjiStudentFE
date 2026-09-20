@@ -385,7 +385,13 @@ async function streamQuestion(
     if (!controller.signal.aborted && !receivedTerminalEvent) {
         setTurns((currentTurns) =>
             currentTurns.map((turn) =>
-                updateTurn(turn, turnId, { type: "completed" }),
+                turn.id === turnId
+                    ? {
+                          ...turn,
+                          error: "连接中断，回答可能尚未完成，请稍后刷新页面查看。",
+                          state: "failed",
+                      }
+                    : turn,
             ),
         );
     }

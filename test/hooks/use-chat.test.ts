@@ -32,6 +32,42 @@ describe("useChat SSE parser", () => {
 		sessionHistory.hasSameSessionMessages.mockReset();
   });
 
+  it.each([false, true])("缺少终态时应提示连接中断并保留已收到的内容（部分帧：%s）", async (partialFrame) => {
+    tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "interrupted-session" });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(async (_request, options) => {
+      const payload = 'data: {"seq":1,"type":"assistant.delta","data":{"text":"已收到的回答"}}\n\n'
+        + (partialFrame ? 'data: {"seq":2,"type":"run.compl' : "");
+      options.onDownloadProgress({ event: { target: { responseText: payload } } });
+      return payload;
+    });
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => { await result.current.submitQuestion("测试提前断流"); });
+
+    expect(result.current.turns[0]).toMatchObject({
+      answer: "已收到的回答",
+      state: "failed",
+      error: "连接中断，回答可能尚未完成，请稍后刷新页面查看。",
+    });
+    expect(result.current.isStreaming).toBe(false);
+    expect(tongjiStudentService.SessionMessagesPOST).toHaveBeenCalledOnce();
+  });
+
+  it("收到失败终态后不应覆盖为连接中断", async () => {
+    tongjiStudentService.SessionPOST.mockResolvedValue({ session_id: "failed-session" });
+    tongjiStudentService.SessionMessagesPOST.mockImplementation(async (_request, options) => {
+      options.onDownloadProgress({ event: { target: {
+        responseText: 'data: {"seq":1,"type":"run.failed","data":{}}\n\n',
+      } } });
+    });
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => { await result.current.submitQuestion("失败终态"); });
+
+    expect(result.current.turns[0]).toMatchObject({ state: "failed", error: "生成失败，请稍后重试。" });
+    expect(result.current.isStreaming).toBe(false);
+  });
+
   it("应发送所选档位，并允许同一会话逐轮切换", async () => {
     tongjiStudentService.SessionPOST.mockResolvedValue({session_id: "tier-session"});
     tongjiStudentService.SessionMessagesPOST.mockResolvedValue({});
